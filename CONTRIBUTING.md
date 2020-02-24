@@ -167,11 +167,10 @@ The scope should be the name of the area affected (as perceived by the person re
 The following is the list of supported scopes:
 
 * **assets**
-* **common**
-* **controls**
-* **engine**
-* **gameplay**
-* **import**
+* **gui**
+* **yggdrasil**
+* **forge**
+* **minecraft**
 
 ### Subject
 The subject contains a succinct description of the change:
