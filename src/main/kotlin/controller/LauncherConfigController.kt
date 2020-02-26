@@ -1,11 +1,10 @@
-package lib
+package controller
 
-import sun.misc.Launcher
 import tornadofx.Controller
 import java.io.File
 import java.util.*
 
-class LauncherConfig : Controller() {
+class LauncherConfigController : Controller() {
     var name: String = ""
         private set
 
@@ -29,5 +28,9 @@ class LauncherConfig : Controller() {
             }
             else -> props.getProperty("folder")
         }
+    }
+
+    fun folder(): File {
+        return File(folder)
     }
 }
