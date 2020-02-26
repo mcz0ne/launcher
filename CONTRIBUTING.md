@@ -1,6 +1,6 @@
-# Contributing to Transfer
+# Contributing to this Repository
 
-We would love for you to contribute to Transfer and help make it even better than it is
+We would love for you to contribute to this repository and help make it even better than it is
 today! As a contributor, here are the guidelines we would like you to follow:
 
  - [Code of Conduct](#coc)
