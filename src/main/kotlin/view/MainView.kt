@@ -89,7 +89,11 @@ class MainView : View("mc.z0ne.moe Launcher") {
 
                     buttonbar {
                         vgrow = Priority.NEVER
-                        button("Add new Account")
+                        button("Add new Account") {
+                            action {
+                                find<AddAccount>().openModal(block = true)
+                            }
+                        }
                     }
                 }
             }

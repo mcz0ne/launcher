@@ -3,13 +3,15 @@ package lib
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
-import okhttp3.RequestBody.Companion.toRequestBody;
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 
-class Yggdrasil(clientToken: String?) {
+class Yggdrasil(clientToken: String) {
+    class ForbiddenException(message: String) : Exception(message)
+
     @Serializable
     data class AuthenticationAgent(
         val name: String = "minecraft",
@@ -40,43 +42,43 @@ class Yggdrasil(clientToken: String?) {
     )
 
     @Serializable
-    data class AuthenticationSelectedProfile (
-        val id : String,
-        val name : String,
-        val userId : String,
-        val createdAt : Int,
-        val legacyProfile : Boolean,
-        val suspended : Boolean,
-        val paid : Boolean,
-        val migrated : Boolean,
-        val legacy : Boolean
+    data class AuthenticationSelectedProfile(
+        val id: String,
+        val name: String,
+        val userId: String,
+        val createdAt: Int,
+        val legacyProfile: Boolean,
+        val suspended: Boolean,
+        val paid: Boolean,
+        val migrated: Boolean,
+        val legacy: Boolean
     )
 
     @Serializable
-    data class AuthenticationUserProperties (
-        val name : String,
-        val value : String
+    data class AuthenticationUserProperties(
+        val name: String,
+        val value: String
     )
 
     @Serializable
-    data class AuthenticationUser (
-        val id : String,
-        val email : String,
-        val username : String,
-        val registerIp : String,
-        val migratedFrom : String,
-        val migratedAt : Int,
-        val registeredAt : Int,
-        val passwordChangedAt : Int,
-        val dateOfBirth : Int,
-        val suspended : Boolean,
-        val blocked : Boolean,
-        val secured : Boolean,
-        val migrated : Boolean,
-        val emailVerified : Boolean,
-        val legacyUser : Boolean,
-        val verifiedByParent : Boolean,
-        val properties : List<AuthenticationUserProperties>
+    data class AuthenticationUser(
+        val id: String,
+        val email: String,
+        val username: String,
+        val registerIp: String,
+        val migratedFrom: String,
+        val migratedAt: Int,
+        val registeredAt: Int,
+        val passwordChangedAt: Int,
+        val dateOfBirth: Int,
+        val suspended: Boolean,
+        val blocked: Boolean,
+        val secured: Boolean,
+        val migrated: Boolean,
+        val emailVerified: Boolean,
+        val legacyUser: Boolean,
+        val verifiedByParent: Boolean,
+        val properties: List<AuthenticationUserProperties>
     )
 
     @Serializable
@@ -88,6 +90,12 @@ class Yggdrasil(clientToken: String?) {
         val user: AuthenticationUser?
     )
 
+    @Serializable
+    data class ErrorResponse(
+        val error: String,
+        val errorMessage: String
+    )
+
     companion object {
         private const val authServer = "https://authserver.mojang.com/"
         private val JSON = "application/json; charset=utf-8".toMediaType()
@@ -95,7 +103,7 @@ class Yggdrasil(clientToken: String?) {
         private val http = OkHttpClient()
     }
 
-    private val theClientToken = clientToken.orEmpty()
+    private val theClientToken = clientToken
 
     private fun request(url: String, payload: String): Response {
         val req = Request.Builder()
@@ -108,13 +116,23 @@ class Yggdrasil(clientToken: String?) {
     }
 
     fun authenticate(username: String, password: String) {
-        request("authenticate", json.stringify(AuthenticationRequest.serializer(), AuthenticationRequest(
-            username = username,
-            password = password,
-            clientToken = theClientToken
-        ))).use {
+        request(
+            "authenticate", json.stringify(
+                AuthenticationRequest.serializer(), AuthenticationRequest(
+                    username = username,
+                    password = password,
+                    clientToken = theClientToken
+                )
+            )
+        ).use {
+            val rawBody = it.body!!.string()
+
             val body = when (it.code) {
                 200 -> it.body!!
+                403 -> {
+                    val err = json.parse(ErrorResponse.serializer(), rawBody)
+                    throw ForbiddenException(err.errorMessage)
+                }
                 // should not happen
                 404 /* Not found */ -> throw Exception("Invalid endpoint")
                 405 /* Method not allowed */ -> throw Exception("Not a post request")
