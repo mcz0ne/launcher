@@ -91,7 +91,7 @@ class MainView : View("mc.z0ne.moe Launcher") {
                         vgrow = Priority.NEVER
                         button("Add new Account") {
                             action {
-                                find<AddAccount>().openModal(block = true)
+                                find<AddAccount>().openModal(owner = currentWindow!!, block = true)
                             }
                         }
                     }
