@@ -28,64 +28,21 @@ class Yggdrasil(clientToken: String) {
     )
 
     @Serializable
-    data class AuthenticationAvailableProfiles(
-        val agent: String,
-        val id: String,
-        val name: String,
-        val userId: String,
-        val createdAt: Int,
-        val legacyProfile: Boolean,
-        val suspended: Boolean,
-        val paid: Boolean,
-        val migrated: Boolean,
-        val legacy: Boolean
-    )
-
-    @Serializable
     data class AuthenticationSelectedProfile(
         val id: String,
-        val name: String,
-        val userId: String,
-        val createdAt: Int,
-        val legacyProfile: Boolean,
-        val suspended: Boolean,
-        val paid: Boolean,
-        val migrated: Boolean,
-        val legacy: Boolean
-    )
-
-    @Serializable
-    data class AuthenticationUserProperties(
-        val name: String,
-        val value: String
+        val name: String
     )
 
     @Serializable
     data class AuthenticationUser(
         val id: String,
-        val email: String,
-        val username: String,
-        val registerIp: String,
-        val migratedFrom: String,
-        val migratedAt: Int,
-        val registeredAt: Int,
-        val passwordChangedAt: Int,
-        val dateOfBirth: Int,
-        val suspended: Boolean,
-        val blocked: Boolean,
-        val secured: Boolean,
-        val migrated: Boolean,
-        val emailVerified: Boolean,
-        val legacyUser: Boolean,
-        val verifiedByParent: Boolean,
-        val properties: List<AuthenticationUserProperties>
+        val username: String
     )
 
     @Serializable
     data class AuthenticationResponse(
         val accessToken: String,
         val clientToken: String,
-        val availableProfiles: List<AuthenticationAvailableProfiles>?,
         val selectedProfile: AuthenticationSelectedProfile?,
         val user: AuthenticationUser?
     )
@@ -99,7 +56,7 @@ class Yggdrasil(clientToken: String) {
     companion object {
         private const val authServer = "https://authserver.mojang.com/"
         private val JSON = "application/json; charset=utf-8".toMediaType()
-        private val json = Json(JsonConfiguration.Stable)
+        private val json = Json(JsonConfiguration.Stable.copy(strictMode = false)) // we are deliberatly not defining all keys
         private val http = OkHttpClient()
     }
 
@@ -112,7 +69,20 @@ class Yggdrasil(clientToken: String) {
             .header("Content-Type", "application/json")
             .build()
 
-        return http.newCall(req).execute()
+        val res = http.newCall(req).execute()
+
+        when (res.code) {
+            200 -> return res
+            403 -> {
+                val err = json.parse(ErrorResponse.serializer(), res.body!!.string())
+                throw ForbiddenException(err.errorMessage)
+            }
+            // should not happen
+            404 /* Not found */ -> throw Exception("Invalid endpoint")
+            405 /* Method not allowed */ -> throw Exception("Not a post request")
+            415 /* Unsupported media type */ -> throw Exception("Not a JSON body")
+            else -> throw RuntimeException("Unexpected return code: ${res.code}")
+        }
     }
 
     fun authenticate(username: String, password: String) {
@@ -125,22 +95,8 @@ class Yggdrasil(clientToken: String) {
                 )
             )
         ).use {
-            val rawBody = it.body!!.string()
-
-            val body = when (it.code) {
-                200 -> it.body!!
-                403 -> {
-                    val err = json.parse(ErrorResponse.serializer(), rawBody)
-                    throw ForbiddenException(err.errorMessage)
-                }
-                // should not happen
-                404 /* Not found */ -> throw Exception("Invalid endpoint")
-                405 /* Method not allowed */ -> throw Exception("Not a post request")
-                415 /* Unsupported media type */ -> throw Exception("Not a JSON body")
-                else -> throw RuntimeException("Unexpected return code: ${it.code}")
-            }
-
-            println(body)
+            val res = json.parse(AuthenticationResponse.serializer(), it.body!!.string())
+            println(res)
         }
     }
 }
