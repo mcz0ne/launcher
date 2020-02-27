@@ -3,14 +3,16 @@ package controller
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
+import mu.KotlinLogging
 import tornadofx.Controller
 import java.io.File
+import java.util.*
 
 
 class ConfigController : Controller() {
     @Serializable
     data class Configuration(
-        var clientToken: String = ""
+        var clientToken: String = UUID.randomUUID().toString()
     )
 
     companion object {
@@ -19,6 +21,7 @@ class ConfigController : Controller() {
 
     private val launcherConfigController: LauncherConfigController by inject()
     private val appConfig: Configuration
+    private val logger = KotlinLogging.logger {}
 
     init {
         appConfig = try {
@@ -28,12 +31,17 @@ class ConfigController : Controller() {
         } catch (e: Exception) {
             Configuration()
         }
+
+        save()
     }
 
-    private fun save() {
+    fun save() {
+        logger.debug("ensuring config path <{}>", launcherConfigController.folder())
+        launcherConfigController.folder().mkdirs()
+
+        logger.debug("saving configuration")
         val s = json.stringify(Configuration.serializer(), appConfig)
-        val f = File(launcherConfigController.folder(), "config.json")
-        f.outputStream().bufferedWriter().write(s)
+        File(launcherConfigController.folder(), "config.json").writeText(s)
     }
 
     var clientToken: String
