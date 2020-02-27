@@ -19,7 +19,7 @@ dependencies {
     implementation "org.jetbrains.kotlinx:kotlinx-serialization-runtime:0.14.0"
 
     implementation 'io.github.microutils:kotlin-logging:1.7.8'
-    implementation 'org.slf4j:slf4j-simple:1.7.30'
+    implementation 'ch.qos.logback:logback-classic:1.3.0-alpha5'
 
     implementation "com.squareup.okhttp3:okhttp:4.4.0"
 
