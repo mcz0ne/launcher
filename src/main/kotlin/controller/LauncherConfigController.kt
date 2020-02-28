@@ -14,9 +14,16 @@ class LauncherConfigController : Controller() {
     var folder: String = ""
         private set
 
+    var news: String = ""
+        private set
+
     fun fromProperties(props: Properties) {
         name = props.getProperty("name")
         definition = props.getProperty("definition")
+        news = props.getProperty("news")
+        if (news.isEmpty()) {
+            news = "https://github.com/mcz0ne/launcher"
+        }
 
         folder = when (props.getProperty("folder").isNullOrEmpty()) {
             true -> {

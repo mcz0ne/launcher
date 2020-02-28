@@ -1,5 +1,6 @@
 package view
 
+import controller.LauncherConfigController
 import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleIntegerProperty
 import javafx.beans.property.SimpleStringProperty
@@ -12,10 +13,12 @@ import javafx.scene.layout.Priority
 import javafx.scene.layout.RowConstraints
 import javafx.scene.text.FontWeight
 import mu.KotlinLogging
+import sun.misc.Launcher
 import tornadofx.*
 
 class MainView : View("mc.z0ne.moe Launcher") {
     private val logger = KotlinLogging.logger {}
+    private val lcc: LauncherConfigController by inject()
 
     private val optModel = object : ViewModel() {
         val minMem = bind { SimpleStringProperty() }
@@ -41,11 +44,9 @@ class MainView : View("mc.z0ne.moe Launcher") {
 
             tab("News") {
                 webview {
-                    engine.load("https://mc.z0ne.moe")
+                    engine.load(lcc.news)
                 }
             }
-
-            tab("Mods")
 
             tab("Logs") {
                 vbox {
