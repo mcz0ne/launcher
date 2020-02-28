@@ -9,8 +9,18 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 
-class Yggdrasil(clientToken: String) {
+class Yggdrasil(val clientToken: String) {
     class ForbiddenException(message: String) : Exception(message)
+    class StatusCodeException(message: String, val code: Int) : Exception(message)
+
+    @Serializable
+    data class Account(
+        val id: String,
+        val uuid: String,
+        val email: String,
+        val username: String,
+        val accessToken: String
+    )
 
     @Serializable
     data class AuthenticationAgent(
@@ -44,7 +54,7 @@ class Yggdrasil(clientToken: String) {
         val accessToken: String,
         val clientToken: String,
         val selectedProfile: AuthenticationSelectedProfile?,
-        val user: AuthenticationUser?
+        val user: AuthenticationUser? = null
     )
 
     @Serializable
@@ -53,14 +63,19 @@ class Yggdrasil(clientToken: String) {
         val errorMessage: String
     )
 
+    @Serializable
+    data class ValidateRequest(
+        val accessToken: String,
+        val clientToken: String?
+    )
+
     companion object {
         private const val authServer = "https://authserver.mojang.com/"
         private val JSON = "application/json; charset=utf-8".toMediaType()
-        private val json = Json(JsonConfiguration.Stable.copy(strictMode = false)) // we are deliberatly not defining all keys
+        private val json =
+            Json(JsonConfiguration.Stable.copy(strictMode = false)) // we are deliberatly not defining all keys
         private val http = OkHttpClient()
     }
-
-    private val theClientToken = clientToken
 
     private fun request(url: String, payload: String): Response {
         val req = Request.Builder()
@@ -81,22 +96,91 @@ class Yggdrasil(clientToken: String) {
             404 /* Not found */ -> throw Exception("Invalid endpoint")
             405 /* Method not allowed */ -> throw Exception("Not a post request")
             415 /* Unsupported media type */ -> throw Exception("Not a JSON body")
-            else -> throw RuntimeException("Unexpected return code: ${res.code}")
+            else -> throw StatusCodeException("Unexpected return code: ${res.code}", res.code)
         }
     }
 
-    fun authenticate(username: String, password: String) {
+    fun authenticate(username: String, password: String): Account {
         request(
             "authenticate", json.stringify(
                 AuthenticationRequest.serializer(), AuthenticationRequest(
                     username = username,
                     password = password,
-                    clientToken = theClientToken
+                    clientToken = clientToken
                 )
             )
         ).use {
             val res = json.parse(AuthenticationResponse.serializer(), it.body!!.string())
-            println(res)
+
+            return Account(
+                res.user!!.id,
+                res.selectedProfile!!.id,
+                res.user.username,
+                res.selectedProfile.name,
+                res.accessToken
+            )
+        }
+    }
+
+    fun validate(accessToken: String): Boolean {
+        try {
+            request(
+                "validate", json.stringify(
+                    ValidateRequest.serializer(), ValidateRequest(
+                        accessToken = accessToken,
+                        clientToken = clientToken
+                    )
+                )
+            )
+        } catch (ex: StatusCodeException) {
+            return when (ex.code) {
+                204 -> true
+                403 -> false
+                else -> throw ex
+            }
+        }
+
+        // should never happen
+        return false
+    }
+
+    fun refresh(acc: Account): Account {
+        request(
+            "authenticate", json.stringify(
+                AuthenticationResponse.serializer(), AuthenticationResponse(
+                    accessToken = acc.accessToken,
+                    clientToken = clientToken,
+                    selectedProfile = AuthenticationSelectedProfile(
+                        id = acc.uuid,
+                        name = acc.username
+                    )
+                )
+            )
+        ).use {
+            val res = json.parse(AuthenticationResponse.serializer(), it.body!!.string())
+
+            return Account(
+                res.user!!.id,
+                res.selectedProfile!!.id,
+                res.user.username,
+                res.selectedProfile.name,
+                res.accessToken
+            )
+        }
+    }
+
+    fun invalidate(accessToken: String) {
+        try {
+            request(
+                "invalidate", json.stringify(
+                    ValidateRequest.serializer(), ValidateRequest(
+                        accessToken = accessToken,
+                        clientToken = clientToken
+                    )
+                )
+            )
+        } finally {
+            // noop
         }
     }
 }
