@@ -1,19 +1,17 @@
 package view
 
-import controller.AccountsController
+import controller.ConfigController
 import javafx.beans.property.SimpleStringProperty
 import javafx.scene.control.Alert
 import javafx.scene.control.ButtonType
 import javafx.scene.layout.Priority
-import javafx.scene.text.FontWeight
 import lib.Yggdrasil
 import mu.KotlinLogging
 import tornadofx.*
-import tornadofx.Fieldset
 
 class AddAccount : View("Login to Minecraft") {
     private val logger = KotlinLogging.logger {}
-    private val accounts: AccountsController by inject()
+    private val cc: ConfigController by inject()
 
     private val model = object : ViewModel() {
         val username = bind { SimpleStringProperty() }
@@ -42,7 +40,7 @@ class AddAccount : View("Login to Minecraft") {
                         model.commit {
                             try {
                                 logger.debug("logging in to minecraft")
-                                accounts.authenticate(model.username.value, model.password.value)
+                                cc.addAccount(model.username.value, model.password.value)
                                 logger.info("logged in to the account <{}>", model.username.value)
                                 currentStage?.close()
                             } catch (ex: Yggdrasil.ForbiddenException) {
