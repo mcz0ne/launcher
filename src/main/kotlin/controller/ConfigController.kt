@@ -96,6 +96,10 @@ class ConfigController : Controller() {
             ygg.invalidate(acc.accessToken)
             accountsObserver.remove(acc)
 
+            if (selectedAccount == acc) {
+                selectedAccount = if (accountsObserver.count() > 1) { accountsObserver[0] } else { null }
+            }
+
             save()
         }
     }

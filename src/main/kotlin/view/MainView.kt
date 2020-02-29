@@ -249,14 +249,10 @@ class MainView : View("Launcher") {
         }
 
         root.lookup("#account_remove")!!.setOnMouseClicked {
-            val acc = list.selectedItem
+            val acc = list.selectedItem as Yggdrasil.Account?
             if (acc != null) {
-                cc.accounts.remove(acc)
-
-                if (cc.selectedAccount == acc) {
-                    cc.selectedAccount = if (cc.accounts.count() > 1) { cc.accounts[0] } else { null }
-                    list.refresh()
-                }
+                cc.removeAccount(acc.id)
+                list.refresh()
             }
         }
 
