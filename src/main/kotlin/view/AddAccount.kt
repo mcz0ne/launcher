@@ -37,18 +37,24 @@ class AddAccount : View("Login to Minecraft") {
 
                     action {
                         logger.debug("verifying login details")
-                        model.commit {
-                            try {
-                                logger.debug("logging in to minecraft")
-                                cc.addAccount(model.username.value, model.password.value)
-                                logger.info("logged in to the account <{}>", model.username.value)
-                                currentStage?.close()
-                            } catch (ex: Yggdrasil.ForbiddenException) {
-                                logger.warn("failed to login!")
-                                val alert = Alert(Alert.AlertType.ERROR, ex.message, ButtonType.OK)
-                                alert.initOwner(currentWindow!!)
-                                alert.showAndWait()
+                        try {
+                            model.commit {
+                                try {
+                                    logger.debug("logging in to minecraft")
+                                    cc.addAccount(model.username.value, model.password.value)
+                                    logger.info("logged in to the account <{}>", model.username.value)
+                                    currentStage?.close()
+                                } catch (ex: Yggdrasil.ForbiddenException) {
+                                    logger.warn("failed to login!")
+                                    val alert = Alert(Alert.AlertType.ERROR, ex.message, ButtonType.OK)
+                                    alert.initOwner(currentWindow!!)
+                                    alert.showAndWait()
+                                }
                             }
+                        } catch (ex: IllegalStateException) {
+                            val alert = Alert(Alert.AlertType.ERROR, "Please specify username and password", ButtonType.OK)
+                            alert.initOwner(currentWindow!!)
+                            alert.showAndWait()
                         }
                     }
                 }
