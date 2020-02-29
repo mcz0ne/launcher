@@ -110,10 +110,13 @@ class ConfigController : Controller() {
     var selectedAccount: Yggdrasil.Account?
         get() = accountsObserver.find{it.id == appConfig.selectedAccount}
         set(v) {
-            if (v == null || !accountsObserver.contains(v)) {
-                throw IndexOutOfBoundsException("selectedAccount")
+            if (v == null) {
+                appConfig.selectedAccount = ""
+            } else if (!accountsObserver.contains(v)) {
+                return
+            } else {
+                appConfig.selectedAccount = v.id
             }
-            appConfig.selectedAccount = v.id
             save()
         }
 

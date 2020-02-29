@@ -6,6 +6,7 @@ import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleIntegerProperty
 import javafx.beans.property.SimpleStringProperty
 import javafx.geometry.VPos
+import javafx.scene.control.ListView
 import javafx.scene.control.SelectionMode
 import javafx.scene.control.TabPane
 import javafx.scene.layout.Priority
@@ -71,6 +72,7 @@ class MainView : View("Launcher") {
                     spacing = 10.0
 
                     listview<Yggdrasil.Account> {
+                        id = "account_list"
                         vgrow = Priority.ALWAYS
                         cellFormat {
                             text = "${it.username} (${it.email})"
@@ -91,6 +93,14 @@ class MainView : View("Launcher") {
                             action {
                                 find<AddAccount>().openModal(owner = currentWindow!!, block = true)
                             }
+                        }
+
+                        button("Remove Account") {
+                            id = "account_remove"
+                        }
+
+                        button("Use Account") {
+                            id = "account_use"
                         }
                     }
                 }
@@ -220,6 +230,42 @@ class MainView : View("Launcher") {
             label("l")
             label("m")
             label("r")
+        }
+    }
+
+    override fun onDock() {
+        super.onDock()
+
+        val list = root.lookup("#account_list")!! as ListView<*>
+
+        list.setOnMouseClicked {
+            if (it.clickCount >= 2) {
+                val acc = list.selectedItem
+                if (acc != null) {
+                    cc.selectedAccount = acc as Yggdrasil.Account?
+                    list.refresh()
+                }
+            }
+        }
+
+        root.lookup("#account_remove")!!.setOnMouseClicked {
+            val acc = list.selectedItem
+            if (acc != null) {
+                cc.accounts.remove(acc)
+
+                if (cc.selectedAccount == acc) {
+                    cc.selectedAccount = if (cc.accounts.count() > 1) { cc.accounts[0] } else { null }
+                    list.refresh()
+                }
+            }
+        }
+
+        root.lookup("#account_use")!!.setOnMouseClicked {
+            val acc = list.selectedItem
+            if (acc != null) {
+                cc.selectedAccount = acc as Yggdrasil.Account?
+                list.refresh()
+            }
         }
     }
 }
