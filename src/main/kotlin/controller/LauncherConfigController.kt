@@ -5,6 +5,9 @@ import java.io.File
 import java.util.*
 
 class LauncherConfigController : Controller() {
+    var id: String = ""
+        private set
+
     var name: String = ""
         private set
 
@@ -18,7 +21,12 @@ class LauncherConfigController : Controller() {
         private set
 
     fun fromProperties(props: Properties) {
+        id = props.getProperty("id")
         name = props.getProperty("name")
+        if (name.isEmpty()) {
+            name = id
+        }
+
         definition = props.getProperty("definition")
         news = props.getProperty("news")
         if (news.isEmpty()) {
