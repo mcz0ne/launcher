@@ -10,11 +10,15 @@ import javafx.scene.text.FontWeight
 import javafx.stage.DirectoryChooser
 import lib.Yggdrasil
 import mu.KotlinLogging
+import okio.internal.commonToUtf8String
 import tornadofx.*
 import java.io.File
 import java.io.IOException
+import java.io.OutputStream
+import java.io.PrintStream
 
 class MainView : View("Launcher") {
+    private var oldOut: PrintStream? = null
     private val logger = KotlinLogging.logger {}
     private val lcc: LauncherConfigController by inject()
     private val cc: ConfigController by inject()
@@ -42,12 +46,7 @@ class MainView : View("Launcher") {
 
                     textarea {
                         vgrow = Priority.ALWAYS
-                    }
-
-                    buttonbar {
-                        button("Copy")
-                        button("Save")
-                        button("Upload")
+                        id = "log"
                     }
                 }
             }
@@ -263,7 +262,23 @@ class MainView : View("Launcher") {
         }
     }
 
+    override fun onUndock() {
+        System.setOut(oldOut)
+
+        super.onUndock()
+    }
+
     override fun onDock() {
+        oldOut = System.out
+        System.setOut(object : PrintStream(oldOut as OutputStream) {
+            override fun write(arr: ByteArray) {
+                super.write(arr)
+
+                val log = root.lookup("#log") as TextArea
+                log.appendText(arr.commonToUtf8String())
+            }
+        })
+
         super.onDock()
 
         val list = root.lookup("#account_list")!! as ListView<*>
