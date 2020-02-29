@@ -36,9 +36,9 @@ class LauncherConfigController : Controller() {
         folder = when (props.getProperty("folder").isNullOrEmpty()) {
             true -> {
                 if (System.getProperty("os.name").toLowerCase().contains("win")) {
-                    File(File(System.getenv("APPDATA")!!), name).toString()
+                    File(File(System.getenv("APPDATA")!!), id).toString()
                 } else {
-                    File(File(System.getProperty("user.dir")), ".$name").toString()
+                    File(File(System.getProperty("user.dir")), ".$id").toString()
                 }
             }
             else -> props.getProperty("folder")
