@@ -2,37 +2,23 @@ package view
 
 import controller.ConfigController
 import controller.LauncherConfigController
-import javafx.beans.property.SimpleBooleanProperty
-import javafx.beans.property.SimpleIntegerProperty
-import javafx.beans.property.SimpleStringProperty
 import javafx.geometry.VPos
-import javafx.scene.control.ListView
-import javafx.scene.control.SelectionMode
-import javafx.scene.control.TabPane
+import javafx.scene.control.*
 import javafx.scene.layout.Priority
 import javafx.scene.layout.RowConstraints
 import javafx.scene.text.FontWeight
+import javafx.stage.DirectoryChooser
 import lib.Yggdrasil
 import mu.KotlinLogging
 import tornadofx.*
+import java.io.File
+import java.io.IOException
 
 class MainView : View("Launcher") {
     private val logger = KotlinLogging.logger {}
     private val lcc: LauncherConfigController by inject()
     private val cc: ConfigController by inject()
-
-    private val optModel = object : ViewModel() {
-        val minMem = bind { SimpleStringProperty() }
-        val maxMem = bind { SimpleStringProperty() }
-        val javaHome = bind { SimpleStringProperty() }
-        val jvmOpts = bind { SimpleStringProperty() }
-    }
-
-    private val mcModel = object : ViewModel() {
-        val fullscreen = bind { SimpleBooleanProperty() }
-        val width = bind { SimpleIntegerProperty() }
-        val height = bind { SimpleIntegerProperty() }
-    }
+    private val optModel = ConfigController.ConfigurationModel(cc.options)
 
     override val root = vbox {
         setPrefSize(800.0, 600.0)
@@ -119,15 +105,19 @@ class MainView : View("Launcher") {
                         }
 
                         field("Window Width") {
-                            textfield(mcModel.width)
+                            textfield(optModel.width) {
+                                filterInput { it.controlNewText.isInt() }
+                            }
                         }
 
                         field("Window Height") {
-                            textfield(mcModel.height)
+                            textfield(optModel.height) {
+                                filterInput { it.controlNewText.isInt() }
+                            }
                         }
 
                         field {
-                            checkbox("Enable Fullscreen", mcModel.fullscreen)
+                            checkbox("Enable Fullscreen", optModel.fullscreen)
                         }
                     }
 
@@ -149,22 +139,62 @@ class MainView : View("Launcher") {
 
                         field("Java Home Path") {
                             textfield(optModel.javaHome)
-                            button("...")
+                            button("...") {
+                                action {
+                                    val dc = DirectoryChooser()
+                                    dc.title = "Select Java Home Directory"
+                                    dc.initialDirectory = File(optModel.javaHome.value)
+                                    val f = dc.showDialog(currentWindow!!)
+                                    if (f != null) {
+                                        try {
+                                            optModel.javaHome.value = fixJRE(f).toString()
+                                        } catch (ex: IOException) {
+                                            val alert = Alert(Alert.AlertType.ERROR, "This is not a valid Java installation directory!", ButtonType.OK)
+                                            alert.initOwner(currentWindow!!)
+                                            alert.showAndWait()
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         field("Custom JVM Options") {
-                            textarea(optModel.jvmOpts)
+                            textarea(optModel.jvmOptions) {
+                                isWrapText = true
+                                prefRowCount = 3
+                            }
                         }
                     }
 
                     buttonbar {
                         button("Save") {
                             isDefaultButton = true
+                            action {
+                                try {
+                                    logger.debug("committing new options")
+                                    optModel.commit {
+                                        logger.debug("saving new options")
+                                        optModel.item.update()
+                                        cc.save()
+                                    }
+                                } catch (ex: IOException) {
+                                    val alert = Alert(
+                                        Alert.AlertType.ERROR,
+                                        "Failed to save the changes!\n${ex.message}",
+                                        ButtonType.OK
+                                    )
+                                    alert.initOwner(currentWindow!!)
+                                    alert.showAndWait()
+                                }
+                            }
                         }
                         button("Cancel") {
                             isCancelButton = true
+
+                            action {
+                                optModel.rollback()
+                            }
                         }
-                        button("Reset to Defaults")
                     }
                 }
             }
@@ -262,6 +292,20 @@ class MainView : View("Launcher") {
                 cc.selectedAccount = acc as Yggdrasil.Account?
                 list.refresh()
             }
+        }
+    }
+
+    fun fixJRE(f: File): File {
+        val jexe = if (System.getProperty("os.name").toLowerCase().contains("win")) {
+            "java.exe"
+        } else {
+            "java"
+        }
+
+        return when {
+            File(f, "bin/$jexe").exists() -> f
+            File(f, jexe).exists() -> f.parentFile
+            else -> throw IOException("invalid java home directory")
         }
     }
 }
