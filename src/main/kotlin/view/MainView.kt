@@ -1,24 +1,24 @@
 package view
 
+import controller.ConfigController
 import controller.LauncherConfigController
 import javafx.beans.property.SimpleBooleanProperty
 import javafx.beans.property.SimpleIntegerProperty
 import javafx.beans.property.SimpleStringProperty
-import javafx.geometry.Pos
 import javafx.geometry.VPos
 import javafx.scene.control.SelectionMode
 import javafx.scene.control.TabPane
-import javafx.scene.layout.GridPane
 import javafx.scene.layout.Priority
 import javafx.scene.layout.RowConstraints
 import javafx.scene.text.FontWeight
+import lib.Yggdrasil
 import mu.KotlinLogging
-import sun.misc.Launcher
 import tornadofx.*
 
-class MainView : View("mc.z0ne.moe Launcher") {
+class MainView : View("Launcher") {
     private val logger = KotlinLogging.logger {}
     private val lcc: LauncherConfigController by inject()
+    private val cc: ConfigController by inject()
 
     private val optModel = object : ViewModel() {
         val minMem = bind { SimpleStringProperty() }
@@ -70,21 +70,18 @@ class MainView : View("mc.z0ne.moe Launcher") {
                     paddingAll = 5.0
                     spacing = 10.0
 
-                    listview<String> {
+                    listview<Yggdrasil.Account> {
                         vgrow = Priority.ALWAYS
                         cellFormat {
-                            text = it
+                            text = "${it.username} (${it.email})"
 
                             style {
-                                if (it == "Gamma") {
+                                if (it.id == cc.selectedAccount?.id) {
                                     fontWeight = FontWeight.BOLD
                                 }
                             }
                         }
-
-                        items.add("Alpha")
-                        items.add("Beta")
-                        items.add("Gamma")
+                        items.bind(cc.accounts) { it }
                         selectionModel.selectionMode = SelectionMode.SINGLE
                     }
 
