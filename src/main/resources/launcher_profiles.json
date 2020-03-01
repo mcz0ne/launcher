@@ -1,0 +1,59 @@
+{
+  "analyticsFailCount" : 0,
+  "analyticsToken" : "00000000000000000000000000000000",
+  "authenticationDatabase" : {
+    "00000000000000000000000000000000" : {
+      "accessToken" : "00000000000000000000000000000000",
+      "profiles" : {
+        "00000000000000000000000000000000" : {
+          "displayName" : "User"
+        }
+      },
+      "properties" : [],
+      "username" : "user@example.com"
+    }
+  },
+  "clientToken" : "00000000000000000000000000000000",
+  "launcherVersion" : {
+    "format" : 21,
+    "name" : "2.1.1431",
+    "profilesFormat" : 2
+  },
+  "profiles" : {
+    "4a706c614f55606d703ddcbd344fe998" : {
+      "created" : "1970-01-01T00:00:00.000Z",
+      "icon" : "Crafting_Table",
+      "lastUsed" : "1970-01-01T00:00:00.000Z",
+      "lastVersionId" : "latest-snapshot",
+      "name" : "",
+      "type" : "latest-snapshot"
+    },
+    "71ce1525189972ba25f052da25eb9014" : {
+      "created" : "1970-01-01T00:00:00.000Z",
+      "icon" : "Grass",
+      "lastUsed" : "2019-07-04T20:29:34.369Z",
+      "lastVersionId" : "latest-release",
+      "name" : "",
+      "type" : "latest-release"
+    }
+  },
+  "selectedUser" : {
+    "account" : "00000000000000000000000000000000",
+    "profile" : "00000000000000000000000000000000"
+  },
+  "settings" : {
+    "channel" : "release",
+    "crashAssistance" : true,
+    "enableAdvanced" : false,
+    "enableAnalytics" : true,
+    "enableHistorical" : false,
+    "enableReleases" : true,
+    "enableSnapshots" : false,
+    "keepLauncherOpen" : false,
+    "locale" : "en-us",
+    "profileSorting" : "ByLastPlayed",
+    "showGameLog" : false,
+    "showMenu" : false,
+    "soundOn" : false
+  }
+}
