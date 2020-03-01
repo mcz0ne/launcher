@@ -103,10 +103,9 @@ fun download(url: URL, file: File, hash: String?) {
     }
 }
 
-fun extract(jarFile: File, exclude: List<String> = listOf()) {
+fun extract(jarFile: File, destDir: File, exclude: List<String> = listOf()) {
     logger.debug("Extracting {}", jarFile)
     val jar = JarFile(jarFile)
-    val destDir = jarFile.parentFile
 
     val enumEntries = jar.entries()
     while (enumEntries.hasMoreElements()) {
@@ -130,7 +129,7 @@ fun extract(jarFile: File, exclude: List<String> = listOf()) {
     jar.close()
 }
 
-fun install(version: String, location: File) {
+fun install(version: String, location: File): Version {
     logger.info("installing minecraft v{}", version)
     val versionManifest = fetchVersions().filter { it.id == version }.sortedBy { it.time }[0]
 
@@ -138,7 +137,8 @@ fun install(version: String, location: File) {
     val client = versionInfo.downloads["client"] ?: error("client download not found")
 
     logger.info("Downloading minecraft.jar")
-    download(client.url, File(location, "minecraft.jar"), client.sha1)
+    download(client.url, File(location, "versions/$version/$version.jar"), client.sha1)
+    File(location, "versions/$version/$version.json").writeText(json.stringify(Version.serializer(), versionInfo))
 
     val f = VersionArgumentFeature(isDemoUser = false, hasCustomResolution = true)
     val os = VersionArgumentOS(
@@ -164,14 +164,14 @@ fun install(version: String, location: File) {
                 val natives = it.downloads.classifiers!![it.natives[os.name]]!!
                 download(natives.url, File(libLocation, natives.path!!), natives.sha1)
                 if (it.extract != null) {
-                    extract(File(libLocation, natives.path), it.extract.exclude)
+                    extract(File(libLocation, natives.path), File(libLocation, "natives"), it.extract.exclude)
                 }
             }
         }
     }
 
     logger.info("Fetching asset index")
-    val assets = fetchAssetIndex(versionInfo.assetIndex.url)
+    val assets = fetchAssetIndex(versionInfo.assetIndex!!.url)
     val assetBase = URL("http://resources.download.minecraft.net/")
     val assetLocation = File(location, "assets/objects")
     logger.info("Downloading {} assets", assets.objects.count())
@@ -179,4 +179,12 @@ fun install(version: String, location: File) {
         val fname = "${it.value.hash.substring(0, 2)}/${it.value.hash}"
         download(URL(assetBase, fname), File(assetLocation, fname), it.value.hash)
     }
+    File(location, "assets/index/${versionInfo.assets}.json").writeText(
+        json.stringify(
+            AssetObjects.serializer(),
+            assets
+        )
+    )
+
+    return versionInfo
 }

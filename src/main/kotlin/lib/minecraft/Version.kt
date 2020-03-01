@@ -1,13 +1,14 @@
 package lib.minecraft
 
-import kotlinx.serialization.*
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import java.net.URL
 import java.time.OffsetDateTime
 
 @Serializable
 data class VersionArguments(
-    val game: List<@Serializable(with = VersionArgumentSerializer::class) VersionArgument>,
-    val jvm: List<@Serializable(with = VersionArgumentSerializer::class) VersionArgument>
+    val game: List<@Serializable(with = VersionArgumentSerializer::class) VersionArgument> = listOf(),
+    val jvm: List<@Serializable(with = VersionArgumentSerializer::class) VersionArgument> = listOf()
 )
 
 @Serializable
@@ -56,15 +57,19 @@ data class VersionLibrary(
 
 @Serializable
 data class Version(
+    @SerialName("_comment_")
+    private val comment: List<String> = listOf(),
+
+    val inheritsFrom: String? = null,
     val arguments: VersionArguments,
-    val assetIndex: VersionAssetIndex,
-    val assets: String,
-    val downloads: Map<String, VersionDownload>,
+    val assetIndex: VersionAssetIndex? = null,
+    val assets: String = "",
+    val downloads: Map<String, VersionDownload> = mapOf(),
     val id: String,
     val libraries: List<VersionLibrary>,
-    val logging: Logging,
+    val logging: Logging? = null,
     val mainClass: String,
-    val minimumLauncherVersion: Int,
+    val minimumLauncherVersion: Int = -1,
     @Serializable(with = DateTimeSerializer::class)
     val time: OffsetDateTime,
     @Serializable(with = DateTimeSerializer::class)
