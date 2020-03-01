@@ -6,20 +6,20 @@ import kotlinx.serialization.internal.StringDescriptor
 @Serializable
 data class VersionArgumentFeature(
     @SerialName("is_demo_user")
-    val isDemoUser: Boolean? = null,
+    val isDemoUser: Boolean = false,
     @SerialName("has_custom_resolution")
-    val hasCustomResolution: Boolean? = null
+    val hasCustomResolution: Boolean = false
 ) {
     override fun equals(other: Any?): Boolean {
         if (other == null || other !is VersionArgumentFeature) {
             return super.equals(other)
         }
 
-        if (isDemoUser != null && isDemoUser != other.isDemoUser) {
+        if (isDemoUser && !other.isDemoUser) {
             return false
         }
 
-        if (hasCustomResolution != null && hasCustomResolution == other.hasCustomResolution) {
+        if (hasCustomResolution && !other.hasCustomResolution) {
             return false
         }
 
@@ -28,6 +28,10 @@ data class VersionArgumentFeature(
 
     override fun hashCode(): Int {
         return super.hashCode()
+    }
+
+    override fun toString(): String {
+        return "Feature<isDemoUser:$isDemoUser,hasCustomResolution:$hasCustomResolution>"
     }
 }
 
@@ -46,11 +50,11 @@ data class VersionArgumentOS(
             return false
         }
 
-        if (version != null && version == other.version) {
+        if (version != null && version != other.version) {
             return false
         }
 
-        if (arch != null && arch == other.arch) {
+        if (arch != null && arch != other.arch) {
             return false
         }
 
@@ -59,6 +63,10 @@ data class VersionArgumentOS(
 
     override fun hashCode(): Int {
         return super.hashCode()
+    }
+
+    override fun toString(): String {
+        return "OS<name:${name ?: "null"},version:${version ?: "null"},arch:${arch ?: "null"}>"
     }
 }
 
@@ -72,11 +80,34 @@ data class VersionArgumentRule(
     fun allowed(features: VersionArgumentFeature, os: VersionArgumentOS): Boolean {
         val result = action == VersionArgumentRuleAction.ALLOW
 
-        return if ((this.features == null || this.features == features) && (this.os == null || this.os == os)) {
+        val featuresOK = if (this.features != null) {
+            this.features == features
+        } else {
+            true
+        }
+
+        val osOK = if (this.os != null) {
+            this.os == os
+        } else {
+            true
+        }
+
+        return if (featuresOK && osOK) {
             result
         } else {
             !result
         }
+    }
+
+    override fun toString(): String {
+        val sb = StringBuilder()
+        if (features != null) {
+            sb.append(features.toString())
+        }
+        if (os != null) {
+            sb.append(os.toString())
+        }
+        return sb.toString()
     }
 }
 
@@ -153,9 +184,20 @@ sealed class VersionArgument {
         private val value: VersionArgument
     ) : VersionArgument() {
         override fun arguments(feature: VersionArgumentFeature, os: VersionArgumentOS): List<String> {
-            return if (rules.all { it.allowed(feature, os) }) {
+            logger.debug(
+                "checking rules {}",
+                rules.joinToString { it.toString() },
+                feature,
+                os
+            )
+
+            return if (rules.all {
+                    it.allowed(feature, os)
+                }) {
+                logger.debug("rules matched, returning arguments")
                 value.arguments(feature, os)
             } else {
+                logger.debug("rules not matched")
                 listOf()
             }
         }
