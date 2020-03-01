@@ -14,7 +14,6 @@ import java.security.MessageDigest
 import java.util.jar.JarFile
 import javax.xml.bind.annotation.adapters.HexBinaryAdapter
 
-
 private val logger = KotlinLogging.logger {}
 private val json = Json(JsonConfiguration.Stable)
 private val http = OkHttpClient()
@@ -79,7 +78,7 @@ fun download(url: URL, file: File, hash: String?) {
     }
 
     val req = Request.Builder().url(url).build()
-    logger.debug("Downloading {} libraries to {}", url, file)
+    logger.debug("Downloading {} to {}", url, file)
     http.newCall(req).execute().use {
         if (!it.isSuccessful) {
             throw Exception("failed to download file")
