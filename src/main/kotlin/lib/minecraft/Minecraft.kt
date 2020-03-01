@@ -14,7 +14,7 @@ import java.security.MessageDigest
 import java.util.jar.JarFile
 import javax.xml.bind.annotation.adapters.HexBinaryAdapter
 
-private val logger = KotlinLogging.logger {}
+internal val logger = KotlinLogging.logger {}
 private val json = Json(JsonConfiguration.Stable)
 private val http = OkHttpClient()
 private const val VersionManifestURL: String = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
@@ -106,6 +106,7 @@ fun download(url: URL, file: File, hash: String?) {
 fun extract(jarFile: File, destDir: File, exclude: List<String> = listOf()) {
     logger.debug("Extracting {}", jarFile)
     val jar = JarFile(jarFile)
+    destDir.mkdirs()
 
     val enumEntries = jar.entries()
     while (enumEntries.hasMoreElements()) {
@@ -114,12 +115,14 @@ fun extract(jarFile: File, destDir: File, exclude: List<String> = listOf()) {
             continue
         }
 
-        val f = File(destDir.toString() + File.separator + file.name)
+        val f = File(destDir, file.name)
         if (file.isDirectory) {
+            logger.debug("creating directory {}", file)
             f.mkdir()
             continue
         }
 
+        logger.debug("extracting file {}", file)
         val s = f.outputStream()
         val cs = jar.getInputStream(file)
         cs.copyTo(s)
@@ -133,11 +136,11 @@ fun install(version: String, location: File): Version {
     logger.info("installing minecraft v{}", version)
     val versionManifest = fetchVersions().filter { it.id == version }.sortedBy { it.time }[0]
 
-    val versionInfo = fetchVersion(versionManifest.url)
+    val versionInfo = fetchVersion(versionManifest.url!!)
     val client = versionInfo.downloads["client"] ?: error("client download not found")
 
     logger.info("Downloading minecraft.jar")
-    download(client.url, File(location, "versions/$version/$version.jar"), client.sha1)
+    download(client.url!!, File(location, "versions/$version/$version.jar"), client.sha1)
     File(location, "versions/$version/$version.json").writeText(json.stringify(Version.serializer(), versionInfo))
 
     val f = VersionArgumentFeature(isDemoUser = false, hasCustomResolution = true)
@@ -155,23 +158,21 @@ fun install(version: String, location: File): Version {
         } else {
             logger.debug("Downloading {}", it.name)
             download(
-                it.downloads.artifact.url,
+                it.downloads.artifact.url!!,
                 File(libLocation, it.downloads.artifact.path!!),
                 it.downloads.artifact.sha1
             )
 
             if (it.natives != null && it.natives.containsKey(os.name)) {
                 val natives = it.downloads.classifiers!![it.natives[os.name]]!!
-                download(natives.url, File(libLocation, natives.path!!), natives.sha1)
-                if (it.extract != null) {
-                    extract(File(libLocation, natives.path), File(libLocation, "natives"), it.extract.exclude)
-                }
+                download(natives.url!!, File(libLocation, natives.path!!), natives.sha1)
+                extract(File(libLocation, natives.path), File(libLocation, "natives"), it.extract?.exclude ?: listOf())
             }
         }
     }
 
     logger.info("Fetching asset index")
-    val assets = fetchAssetIndex(versionInfo.assetIndex!!.url)
+    val assets = fetchAssetIndex(versionInfo.assetIndex!!.url!!)
     val assetBase = URL("http://resources.download.minecraft.net/")
     val assetLocation = File(location, "assets/objects")
     logger.info("Downloading {} assets", assets.objects.count())
@@ -179,7 +180,9 @@ fun install(version: String, location: File): Version {
         val fname = "${it.value.hash.substring(0, 2)}/${it.value.hash}"
         download(URL(assetBase, fname), File(assetLocation, fname), it.value.hash)
     }
-    File(location, "assets/index/${versionInfo.assets}.json").writeText(
+    val ai = File(location, "assets/indexes/${versionInfo.assets}.json")
+    ai.parentFile.mkdirs()
+    ai.writeText(
         json.stringify(
             AssetObjects.serializer(),
             assets

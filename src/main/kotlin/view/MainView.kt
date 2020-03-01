@@ -2,6 +2,7 @@ package view
 
 import controller.ConfigController
 import controller.LauncherConfigController
+import event.LaunchArgsEvent
 import javafx.geometry.VPos
 import javafx.scene.control.*
 import javafx.scene.layout.Priority
@@ -10,19 +11,26 @@ import javafx.scene.text.FontWeight
 import javafx.stage.DirectoryChooser
 import lib.Yggdrasil
 import mu.KotlinLogging
-import okio.internal.commonToUtf8String
 import tornadofx.*
 import java.io.File
 import java.io.IOException
-import java.io.OutputStream
-import java.io.PrintStream
 
 class MainView : View("Launcher") {
-    private var oldOut: PrintStream? = null
     private val logger = KotlinLogging.logger {}
     private val lcc: LauncherConfigController by inject()
     private val cc: ConfigController by inject()
     private val optModel = ConfigController.ConfigurationModel(cc.options)
+    private var args: List<String> = listOf()
+
+    private var accountLabel: Label by singleAssign()
+
+
+    init {
+        subscribe<LaunchArgsEvent> {
+            args = it.args
+            root.lookup("#launch").isDisable = false
+        }
+    }
 
     override val root = vbox {
         setPrefSize(800.0, 600.0)
@@ -36,18 +44,6 @@ class MainView : View("Launcher") {
             tab("News") {
                 webview {
                     engine.load(lcc.news)
-                }
-            }
-
-            tab("Logs") {
-                vbox {
-                    paddingAll = 5.0
-                    spacing = 10.0
-
-                    textarea {
-                        vgrow = Priority.ALWAYS
-                        id = "log"
-                    }
                 }
             }
 
@@ -148,7 +144,11 @@ class MainView : View("Launcher") {
                                         try {
                                             optModel.javaHome.value = fixJRE(f).toString()
                                         } catch (ex: IOException) {
-                                            val alert = Alert(Alert.AlertType.ERROR, "This is not a valid Java installation directory!", ButtonType.OK)
+                                            val alert = Alert(
+                                                Alert.AlertType.ERROR,
+                                                "This is not a valid Java installation directory!",
+                                                ButtonType.OK
+                                            )
                                             alert.initOwner(currentWindow!!)
                                             alert.showAndWait()
                                         }
@@ -253,32 +253,74 @@ class MainView : View("Launcher") {
 
         hbox {
             vgrow = Priority.NEVER
-            minHeight = 50.0
-            maxHeight = 50.0
+            hgrow = Priority.ALWAYS
+            minHeight = 30.0
+            maxHeight = 30.0
 
-            label("l")
-            label("m")
-            label("r")
+            pane {
+                hgrow = Priority.ALWAYS
+            }
+
+            textflow {
+                paddingAll = 6.0
+                label("Selected Minecraft Account: ")
+                label(cc.selectedAccount?.username ?: "unknown...") {
+                    accountLabel = this
+
+                    style {
+                        fontWeight = FontWeight.BOLD
+                    }
+                }
+            }
+            button("Launch Minecraft") {
+                id = "launch"
+                isDisable = true
+
+                action {
+                    logger.debug("preparing launch args")
+                    var java = File(cc.options.javaHome, "bin/java").toString()
+                    if (lib.Util.OS.detect() == lib.Util.OS.Windows) {
+                        java += "w.exe"
+                    }
+
+                    val a = listOf(java).plus(cc.options.jvmOptions.split(' ')).plus(args)
+                    a.forEach {
+                        logger.debug("> {}", it)
+                    }
+
+                    val acc = cc.selectedAccount
+                    if (acc == null) {
+                        val alert = Alert(
+                            Alert.AlertType.ERROR,
+                            "No user account selected!\nMake sure to select one before launching",
+                            ButtonType.OK
+                        )
+                        alert.initOwner(currentWindow!!)
+                        alert.showAndWait()
+                    } else {
+                        if (!cc.verifyAccount(acc.email)) {
+                            find<AddAccount>().openModal(owner = currentWindow!!, block = true)
+                        }
+
+                        ProcessBuilder(a.map {
+                            when (it) {
+                                "\${auth_player_name}" -> acc.username
+                                "\${auth_uuid}" -> acc.uuid
+                                "\${auth_access_token}" -> acc.accessToken
+                                "\${resolution_width}" -> cc.options.width.toString()
+                                "\${resolution_height}" -> cc.options.height.toString()
+                                else -> it
+                            }
+                        })
+                            .directory(File(lcc.folder(), "minecraft"))
+                            .start()
+                    }
+                }
+            }
         }
     }
 
-    override fun onUndock() {
-        System.setOut(oldOut)
-
-        super.onUndock()
-    }
-
     override fun onDock() {
-        oldOut = System.out
-        System.setOut(object : PrintStream(oldOut as OutputStream) {
-            override fun write(arr: ByteArray) {
-                super.write(arr)
-
-                val log = root.lookup("#log") as TextArea
-                log.appendText(arr.commonToUtf8String())
-            }
-        })
-
         super.onDock()
 
         val list = root.lookup("#account_list")!! as ListView<*>
@@ -289,6 +331,9 @@ class MainView : View("Launcher") {
                 if (acc != null) {
                     cc.selectedAccount = acc as Yggdrasil.Account?
                     list.refresh()
+                    accountLabel.text = acc.username
+                } else {
+                    accountLabel.text = "unknown..."
                 }
             }
         }
@@ -296,8 +341,11 @@ class MainView : View("Launcher") {
         root.lookup("#account_remove")!!.setOnMouseClicked {
             val acc = list.selectedItem as Yggdrasil.Account?
             if (acc != null) {
-                cc.removeAccount(acc.id)
+                cc.removeAccount(acc.email)
                 list.refresh()
+                accountLabel.text = acc.username
+            } else {
+                accountLabel.text = "unknown..."
             }
         }
 
@@ -306,11 +354,14 @@ class MainView : View("Launcher") {
             if (acc != null) {
                 cc.selectedAccount = acc as Yggdrasil.Account?
                 list.refresh()
+                accountLabel.text = acc.username
+            } else {
+                accountLabel.text = "unknown..."
             }
         }
     }
 
-    fun fixJRE(f: File): File {
+    private fun fixJRE(f: File): File {
         val jexe = if (System.getProperty("os.name").toLowerCase().contains("win")) {
             "java.exe"
         } else {

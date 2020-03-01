@@ -15,7 +15,7 @@ data class VersionManifestVersion(
     val id: String,
     val type: MinecraftVersionType,
     @Serializable(with = URLSerializer::class)
-    val url: URL,
+    val url: URL?,
     @Serializable(with = DateTimeSerializer::class)
     val time: OffsetDateTime,
     @Serializable(with = DateTimeSerializer::class)

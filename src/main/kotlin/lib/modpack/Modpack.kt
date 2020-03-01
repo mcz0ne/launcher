@@ -178,10 +178,11 @@ fun install(name: String, url: URL, location: java.io.File, clean: Boolean = fal
     if (clean) {
         logger.info("cleaning minecraft instance folder")
         instanceLocation.deleteRecursively()
-        instanceLocation.mkdirs()
-        listOf("config", "mods").forEach {
-            java.io.File(instanceLocation, it).mkdir()
-        }
+    }
+
+    instanceLocation.mkdirs()
+    listOf("config", "mods").forEach {
+        java.io.File(instanceLocation, it).mkdir()
     }
 
     logger.info("grabbing modpack {}", url)
@@ -200,10 +201,11 @@ fun install(name: String, url: URL, location: java.io.File, clean: Boolean = fal
     if (modpack.multiplayer != null) {
         val serversDat = java.io.File(instanceLocation, "servers.dat")
         val serversList: NbtList<NbtCompound> = if (serversDat.exists()) {
-            (NbtIO.readNbtFile(
+            @Suppress("UNCHECKED_CAST")
+            NbtIO.readNbtFile(
                 serversDat,
                 false
-            ).tag as NbtList<*>).filterIsInstance<NbtCompound>() as NbtList<NbtCompound>
+            ).tag as NbtList<NbtCompound>
         } else {
             NbtList()
         }
@@ -258,7 +260,7 @@ fun install(name: String, url: URL, location: java.io.File, clean: Boolean = fal
             "\${version_type}" -> mcVersion.type.toString().toLowerCase()
             "\${classpath}" -> mcVersion.libraries
                 .filter { l -> l.isAllowed(f, os) && !l.downloads.artifact.path.isNullOrBlank() }
-                .joinToString(java.io.File.separator) { l ->
+                .joinToString(java.io.File.pathSeparator) { l ->
                     java.io.File(libLoc, l.downloads.artifact.path!!).toString()
                 }
             else -> when {

@@ -16,6 +16,7 @@ class LauncherApp : App(MainView::class, Styles::class) {
         val properties = Properties()
         properties.load(this.resources.stream("/launcher.properties"))
         launcherConfig.fromProperties(properties)
+        launcherConfig.downloadModpack()
         appConfig
     }
 

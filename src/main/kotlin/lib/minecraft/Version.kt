@@ -18,7 +18,7 @@ data class VersionAssetIndex(
     val size: Int,
     val totalSize: Int,
     @Serializable(with = URLSerializer::class)
-    val url: URL
+    val url: URL?
 )
 
 @Serializable
@@ -28,7 +28,7 @@ data class VersionDownload(
     val sha1: String,
     val size: Int,
     @Serializable(with = URLSerializer::class)
-    val url: URL
+    val url: URL?
 )
 
 @Serializable

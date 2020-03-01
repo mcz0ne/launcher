@@ -1,7 +1,6 @@
 package controller
 
 import javafx.collections.ObservableList
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
@@ -130,7 +129,7 @@ class ConfigController : Controller() {
         File(launcherConfigController.folder(), "config.json").writeText(s)
     }
 
-    private fun verifyAccount(username: String): Boolean {
+    fun verifyAccount(username: String): Boolean {
         val acc = accountsObserver.find { it.email == username }
         var ok = false
         try {
@@ -141,6 +140,8 @@ class ConfigController : Controller() {
 
                     val newAcc = ygg.refresh(acc)
                     accountsObserver.add(newAcc)
+                    ok = true
+                } else {
                     ok = true
                 }
             }

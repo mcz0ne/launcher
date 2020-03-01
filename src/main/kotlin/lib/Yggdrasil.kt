@@ -3,13 +3,13 @@ package lib
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
-import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 
-class Yggdrasil(val clientToken: String) {
+class Yggdrasil(private val clientToken: String) {
     class ForbiddenException(message: String) : Exception(message)
     class StatusCodeException(message: String, val code: Int) : Exception(message)
 
@@ -132,6 +132,8 @@ class Yggdrasil(val clientToken: String) {
                     )
                 )
             )
+        } catch (ex: ForbiddenException) {
+            return false
         } catch (ex: StatusCodeException) {
             return when (ex.code) {
                 204 -> true
@@ -179,7 +181,7 @@ class Yggdrasil(val clientToken: String) {
                     )
                 )
             )
-        } finally {
+        } catch (ex: Exception) {
             // noop
         }
     }

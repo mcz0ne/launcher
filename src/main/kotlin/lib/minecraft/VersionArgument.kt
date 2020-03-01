@@ -2,11 +2,6 @@ package lib.minecraft
 
 import kotlinx.serialization.*
 import kotlinx.serialization.internal.StringDescriptor
-import kotlinx.serialization.internal.StringSerializer
-import kotlinx.serialization.json.JsonDecodingException
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.plus
-import kotlinx.serialization.modules.serializersModuleOf
 
 @Serializable
 data class VersionArgumentFeature(
@@ -15,18 +10,25 @@ data class VersionArgumentFeature(
     @SerialName("has_custom_resolution")
     val hasCustomResolution: Boolean? = null
 ) {
-//    override fun equals(other: Any?): Boolean {
-//        if (other is VersionArgumentFeature) {
-//            return if ((other.isDemoUser != null || isDemoUser != null) && other.isDemoUser != isDemoUser) {
-//                false
-//            } else !((other.hasCustomResolution != null || hasCustomResolution != null) && other.hasCustomResolution != hasCustomResolution)
-//        }
-//        return super.equals(other)
-//    }
-//
-//    override fun hashCode(): Int {
-//        return super.hashCode()
-//    }
+    override fun equals(other: Any?): Boolean {
+        if (other == null || other !is VersionArgumentFeature) {
+            return super.equals(other)
+        }
+
+        if (isDemoUser != null && isDemoUser != other.isDemoUser) {
+            return false
+        }
+
+        if (hasCustomResolution != null && hasCustomResolution == other.hasCustomResolution) {
+            return false
+        }
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return super.hashCode()
+    }
 }
 
 @Serializable
@@ -35,20 +37,29 @@ data class VersionArgumentOS(
     val version: String? = null,
     val arch: String? = null
 ) {
-//    override fun equals(other: Any?): Boolean {
-//        if (other is VersionArgumentOS) {
-//            return if ((other.name != null || name != null) && other.name != name) {
-//                false
-//            } else if ((other.version != null || version != null) && other.version != version) {
-//                false
-//            } else !((other.arch != null || arch != null) && other.arch != arch)
-//        }
-//        return super.equals(other)
-//    }
-//
-//    override fun hashCode(): Int {
-//        return super.hashCode()
-//    }
+    override fun equals(other: Any?): Boolean {
+        if (other == null || other !is VersionArgumentOS) {
+            return super.equals(other)
+        }
+
+        if (name != null && name != other.name) {
+            return false
+        }
+
+        if (version != null && version == other.version) {
+            return false
+        }
+
+        if (arch != null && arch == other.arch) {
+            return false
+        }
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return super.hashCode()
+    }
 }
 
 

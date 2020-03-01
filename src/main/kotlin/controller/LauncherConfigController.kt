@@ -1,7 +1,10 @@
 package controller
 
+import event.LaunchArgsEvent
+import event.UpdateEvent
 import tornadofx.Controller
 import java.io.File
+import java.net.URL
 import java.util.*
 
 class LauncherConfigController : Controller() {
@@ -11,11 +14,9 @@ class LauncherConfigController : Controller() {
     var name: String = ""
         private set
 
-    var definition: String = ""
-        private set
+    private var definition: String = ""
 
-    var folder: String = ""
-        private set
+    private var folder: String = ""
 
     var news: String = ""
         private set
@@ -47,5 +48,16 @@ class LauncherConfigController : Controller() {
 
     fun folder(): File {
         return File(folder)
+    }
+
+    fun downloadModpack() {
+        fire(UpdateEvent(name, URL(definition), folder()))
+    }
+
+    init {
+        subscribe<UpdateEvent> {
+            val args = lib.modpack.install(it.name, it.definition, it.folder)
+            fire(LaunchArgsEvent(args))
+        }
     }
 }

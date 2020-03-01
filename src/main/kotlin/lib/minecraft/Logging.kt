@@ -11,5 +11,5 @@ data class LoggingClient(
 
 @Serializable
 data class Logging(
-    val client: LoggingClient
+    val client: LoggingClient? = null
 )
