@@ -4,7 +4,8 @@ import javafx.collections.ObservableList
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
-import lib.Yggdrasil
+import lib.yggdrasil.Account
+import lib.yggdrasil.Yggdrasil
 import mu.KotlinLogging
 import tornadofx.*
 import java.io.File
@@ -38,7 +39,7 @@ class ConfigController : Controller() {
     data class Configuration(
         var clientToken: String = UUID.randomUUID().toString(),
 
-        val accounts: MutableList<Yggdrasil.Account> = mutableListOf(),
+        val accounts: MutableList<Account> = mutableListOf(),
         var selectedAccount: String = "",
 
         val minecraft: MinecraftConfiguration = MinecraftConfiguration(),
@@ -97,17 +98,17 @@ class ConfigController : Controller() {
         private val json = Json(JsonConfiguration.Stable.copy(prettyPrint = true))
     }
 
-    private val launcherConfigController: LauncherConfigController by inject()
+    private val launcherConfigController: Any? = null
     val appConfig: Configuration
     private val logger = KotlinLogging.logger {}
     private val ygg: Yggdrasil
     private val appConfigProperties: ConfigurationProperties
 
-    private val accountsObserver: ObservableList<Yggdrasil.Account>
+    private val accountsObserver: ObservableList<Account>
 
     init {
         appConfig = try {
-            val f = File(launcherConfigController.folder(), "config.json")
+            val f = File("config.json")
             val t = f.inputStream().bufferedReader().readText()
             json.parse(Configuration.serializer(), t)
         } catch (e: Exception) {
@@ -121,12 +122,12 @@ class ConfigController : Controller() {
     }
 
     fun save() {
-        logger.debug("ensuring config path <{}>", launcherConfigController.folder())
-        launcherConfigController.folder().mkdirs()
+        logger.debug("ensuring config path <{}>", File("."))
+        File(".").mkdirs()
 
         logger.debug("saving configuration")
         val s = json.stringify(Configuration.serializer(), appConfig)
-        File(launcherConfigController.folder(), "config.json").writeText(s)
+        File( "config.json").writeText(s)
     }
 
     fun verifyAccount(username: String): Boolean {
@@ -134,7 +135,7 @@ class ConfigController : Controller() {
         var ok = false
         try {
             if (acc != null) {
-                if (!ygg.validate(acc.accessToken)) {
+                if (!ygg.validate(acc)) {
                     // no need to call logout
                     accountsObserver.remove(acc)
 
@@ -169,7 +170,7 @@ class ConfigController : Controller() {
             accountsObserver.find { it.email == id || it.username == id || it.accessToken == id }
 
         if (acc != null) {
-            ygg.invalidate(acc.accessToken)
+            ygg.invalidate(acc)
             accountsObserver.remove(acc)
 
             if (selectedAccount == acc) {
@@ -191,7 +192,7 @@ class ConfigController : Controller() {
             save()
         }
 
-    var selectedAccount: Yggdrasil.Account?
+    var selectedAccount: Account?
         get() = accountsObserver.find { it.id == appConfig.selectedAccount }
         set(v) {
             if (v == null) {
@@ -204,7 +205,7 @@ class ConfigController : Controller() {
             save()
         }
 
-    val accounts: ObservableList<Yggdrasil.Account>
+    val accounts: ObservableList<Account>
         get() = accountsObserver
 
     val options: ConfigurationProperties

@@ -1,33 +1,69 @@
 package view
 
-import controller.ConfigController
-import javafx.beans.property.SimpleStringProperty
-import javafx.scene.control.Alert
-import javafx.scene.control.ButtonType
+import javafx.scene.control.Label
 import javafx.scene.layout.Priority
-import lib.Yggdrasil
 import mu.KotlinLogging
 import tornadofx.*
 
-class AddAccount : View("Login to Minecraft") {
-    private val logger = KotlinLogging.logger {}
-    private val cc: ConfigController by inject()
+class AddAccount : Fragment("Login to Minecraft") {
+    class Result {
+        var username: String by property()
+        internal fun usernameProperty() = getProperty(Result::username)
 
-    private val model = object : ViewModel() {
-        val username = bind { SimpleStringProperty() }
-        val password = bind { SimpleStringProperty() }
+        var password: String by property()
+        internal fun passwordProperty() = getProperty(Result::password)
     }
+
+    private val logger = KotlinLogging.logger {}
+    private val model = object : ItemViewModel<Result>() {
+        init {
+            item = Result()
+        }
+
+        val username = bind { item?.usernameProperty() }
+        val password = bind { item?.passwordProperty() }
+    }
+
+    private var formLabel: Label by singleAssign()
+    private var labelText: String? = null
+
+    fun with(username: String = "", message: String = ""): AddAccount {
+        model.item.username = username
+        labelText = message
+        return this
+    }
+
+    override fun onBeforeShow() {
+        formLabel.text = labelText
+            ?: "Your password wont be stored on the hard drive.\nInstead we will only keep a dynamic, non reversable ID given out by Mojang."
+        labelText = null
+
+        super.onBeforeShow()
+    }
+
+    override fun onUndock() {
+        formLabel.text = ""
+        super.onUndock()
+    }
+
+    var submitted = false
+        private set
+
+    val result: Result?
+        get() = if (submitted) model.item else null
 
     override val root = form {
         fieldset {
-            label("Your password wont be stored on the hard drive.\nInstead we will only keep a dynamic, non reversable ID given out by Mojang.")
+            label {
+                formLabel = this
+            }
 
             field("Username") {
-                textfield(model.username)
+                textfield(model.username).required(message = "Provide your login username")
             }
 
             field("Password") {
-                passwordfield(model.password)
+                passwordfield(model.password).required(message = "Provide your password")
             }
 
             buttonbar {
@@ -36,25 +72,14 @@ class AddAccount : View("Login to Minecraft") {
                     isDefaultButton = true
 
                     action {
-                        logger.debug("verifying login details")
                         try {
-                            model.commit {
-                                try {
-                                    logger.debug("logging in to minecraft")
-                                    cc.addAccount(model.username.value, model.password.value)
-                                    logger.info("logged in to the account <{}>", model.username.value)
-                                    currentStage?.close()
-                                } catch (ex: Yggdrasil.ForbiddenException) {
-                                    logger.warn("failed to login!")
-                                    val alert = Alert(Alert.AlertType.ERROR, ex.message, ButtonType.OK)
-                                    alert.initOwner(currentWindow!!)
-                                    alert.showAndWait()
-                                }
+                            logger.debug("trying to commit")
+                            submitted = model.commit()
+                            if (submitted) {
+                                currentStage?.close()
                             }
-                        } catch (ex: IllegalStateException) {
-                            val alert = Alert(Alert.AlertType.ERROR, "Please specify username and password", ButtonType.OK)
-                            alert.initOwner(currentWindow!!)
-                            alert.showAndWait()
+                        } catch (ex: Exception) {
+                            logger.error("unkown ex", ex)
                         }
                     }
                 }
@@ -63,6 +88,7 @@ class AddAccount : View("Login to Minecraft") {
                     isCancelButton = true
 
                     action {
+                        submitted = false
                         currentStage?.close()
                     }
                 }
