@@ -4,8 +4,6 @@ import kotlinx.serialization.Serializable
 import lib.Util
 import lib.join
 import lib.minecraft.URLSerializer
-import lib.modpack.Modpack.Companion.logger
-import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FilenameUtils
 import java.io.File
 import java.net.URL
@@ -44,7 +42,7 @@ data class Package(
 
         return when (FilenameUtils.getExtension(url.path)) {
             "jar" -> "mods"
-            "toml", "cfg", "json", "properties" -> "config"
+            "toml", "cfg", "json", "properties", "txt" -> "config"
             else -> "."
         }
     }

@@ -3,6 +3,7 @@ package app.config
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import lib.Util
+import tornadofx.observable
 import java.io.File
 
 @Serializable
@@ -25,6 +26,27 @@ data class Instance(
         "-XX:G1HeapRegionSize=32M" // Work in 32MB steps to prevent slow collection for large objects
     ).joinToString(" ")
 ) {
+    @Transient
+    val minecraftWidthProperty = this.observable<Int>("minecraftWidth")
+
+    @Transient
+    val minecraftHeightProperty = this.observable<Int>("minecraftHeight")
+
+    @Transient
+    val javaMinMemProperty = this.observable<String>("javaMinMem")
+
+    @Transient
+    val javaMaxMemProperty = this.observable<String>("javaMaxMem")
+
+    @Transient
+    val javaHomeProperty = this.observable<String>("javaHome")
+
+    @Transient
+    val javaOptionsProperty = this.observable<String>("javaOptions")
+
+    @Transient
+    val alwaysUpdateProperty = this.observable<Boolean>("alwaysUpdate")
+
     companion object {
         fun load(file: File): Instance {
             val inst = if (!file.exists()) {

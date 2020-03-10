@@ -6,7 +6,6 @@ import JAVA_EXECUTABLE
 import VERSION
 import app.LauncherApp
 import controller.UpdateController
-import event.ModpackUpdateEvent
 import javafx.concurrent.Task
 import javafx.geometry.VPos
 import javafx.scene.control.*
@@ -15,16 +14,13 @@ import javafx.scene.layout.RowConstraints
 import javafx.scene.text.FontWeight
 import lib.*
 import lib.Dialog
-import lib.modpack.Modpack
 import lib.yggdrasil.Account
 import lib.yggdrasil.BadRequestException
 import mu.KotlinLogging
 import org.controlsfx.control.TaskProgressView
-import runtimeDirectories
 import tornadofx.*
 import java.awt.Desktop
 import java.io.File
-import java.io.FileNotFoundException
 import java.io.IOException
 
 class MainView : View("Launcher") {
@@ -160,6 +156,19 @@ class MainView : View("Launcher") {
                     paddingAll = 5.0
 
                     fieldset {
+                        legend = label("Launcher") {
+                            style {
+                                fontScale = 1.1
+                                fontWeight = FontWeight.BOLD
+                            }
+                        }
+
+                        field {
+                            checkbox("Always update modpack without asking", launcherApp.instance.alwaysUpdateProperty)
+                        }
+                    }
+
+                    fieldset {
                         legend = label("Minecraft") {
                             style {
                                 fontScale = 1.1
@@ -168,19 +177,15 @@ class MainView : View("Launcher") {
                         }
 
                         field("Window Width") {
-                            //                            textfield(optModel.width) {
-//                                filterInput { it.controlNewText.isInt() }
-//                            }
+                            textfield(launcherApp.instance.minecraftWidthProperty) {
+                                filterInput { it.controlNewText.isInt() }
+                            }
                         }
 
                         field("Window Height") {
-                            //                            textfield(optModel.height) {
-//                                filterInput { it.controlNewText.isInt() }
-//                            }
-                        }
-
-                        field {
-                            //                            checkbox("Enable Fullscreen", optModel.fullscreen)
+                            textfield(launcherApp.instance.minecraftHeightProperty) {
+                                filterInput { it.controlNewText.isInt() }
+                            }
                         }
                     }
 
@@ -193,43 +198,43 @@ class MainView : View("Launcher") {
                         }
 
                         field("Minimum Memory") {
-                            //                            textfield(optModel.minMem)
+                            textfield(launcherApp.instance.javaMinMemProperty)
                         }
 
                         field("Maximum Memory") {
-                            //                            textfield(optModel.maxMem)
+                            textfield(launcherApp.instance.javaMaxMemProperty)
                         }
 
                         field("Java Home Path") {
-                            //                            textfield(optModel.javaHome)
-//                            button("...") {
-//                                action {
-//                                    val dc = DirectoryChooser()
-//                                    dc.title = "Select Java Home Directory"
-//                                    dc.initialDirectory = File(optModel.javaHome.value)
-//                                    val f = dc.showDialog(currentWindow!!)
-//                                    if (f != null) {
-//                                        try {
-//                                            optModel.javaHome.value = fixJRE(f).toString()
-//                                        } catch (ex: IOException) {
-//                                            val alert = Alert(
-//                                                Alert.AlertType.ERROR,
-//                                                "This is not a valid Java installation directory!",
-//                                                ButtonType.OK
-//                                            )
-//                                            alert.initOwner(currentWindow!!)
-//                                            alert.showAndWait()
-//                                        }
-//                                    }
-//                                }
-//                            }
+                            textfield(launcherApp.instance.javaHomeProperty)
+                            button("...") {
+                                action {
+                                    val f = chooseDirectory(
+                                        "Select Java Home Directory",
+                                        launcherApp.instance.javaHomeProperty.value.file(),
+                                        primaryStage
+                                    )
+                                    if (f != null) {
+                                        try {
+                                            launcherApp.instance.javaHomeProperty.value = fixJRE(f).toString()
+                                        } catch (ex: IOException) {
+                                            Dialog.error(
+                                                "Failed to set java home",
+                                                "This is not a valid Java installation directory!",
+                                                ButtonType.OK,
+                                                owner = primaryStage
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         field("Custom JVM Options") {
-                            //                            textarea(optModel.jvmOptions) {
-//                                isWrapText = true
-//                                prefRowCount = 3
-//                            }
+                            textarea(launcherApp.instance.javaOptionsProperty) {
+                                isWrapText = true
+                                prefRowCount = 3
+                            }
                         }
                     }
 
@@ -239,11 +244,11 @@ class MainView : View("Launcher") {
                             action {
                                 try {
                                     logger.debug("committing new options")
-//                                    optModel.commit {
-//                                        logger.debug("saving new options")
-//                                        optModel.item.update()
-//                                        cc.save()
-//                                    }
+                                    /*launcherApp.instance.commit {
+                                         logger.debug("saving new options")
+                                         //optModel.item.update()*/
+                                    launcherApp.instance.save()
+                                    //}
                                 } catch (ex: IOException) {
                                     val alert = Alert(
                                         Alert.AlertType.ERROR,
@@ -433,15 +438,9 @@ class MainView : View("Launcher") {
     }
 
     private fun fixJRE(f: File): File {
-        val jexe = if (System.getProperty("os.name").toLowerCase().contains("win")) {
-            "java.exe"
-        } else {
-            "java"
-        }
-
         return when {
-            File(f, "bin/$jexe").exists() -> f
-            File(f, jexe).exists() -> f.parentFile
+            f.join("bin", JAVA_EXECUTABLE).exists() -> f
+            f.join(JAVA_EXECUTABLE).exists() -> f.parentFile
             else -> throw IOException("invalid java home directory")
         }
     }
