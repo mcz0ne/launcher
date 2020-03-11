@@ -23,20 +23,8 @@ import view.MainView
 import java.io.File
 import java.io.FileNotFoundException
 import java.net.URL
-import kotlin.collections.List
 import kotlin.collections.component1
 import kotlin.collections.component2
-import kotlin.collections.containsKey
-import kotlin.collections.count
-import kotlin.collections.elementAt
-import kotlin.collections.find
-import kotlin.collections.first
-import kotlin.collections.forEach
-import kotlin.collections.get
-import kotlin.collections.indices
-import kotlin.collections.joinToString
-import kotlin.collections.listOf
-import kotlin.collections.map
 
 class UpdateController : Controller() {
     class UpdateAvailable : FXEvent(runOn = EventBus.RunOn.ApplicationThread)
@@ -58,6 +46,7 @@ class UpdateController : Controller() {
     companion object {
         private val logger = KotlinLogging.logger { }
         private const val f1WrapperFilename = "forge1.jar"
+        private const val f2WrapperFilename = "forge2.jar"
         private const val forgeInstallLink =
             "https://files.minecraftforge.net/maven/net/minecraftforge/forge/%1\$s/forge-%1\$s-installer.jar"
     }
@@ -163,6 +152,7 @@ class UpdateController : Controller() {
                     .joinToString(File.pathSeparator) { libLoc.join(it).toString() } + File.pathSeparator +
                         runtimeDirectories.dataDir.file()
                             .join("versions", modpack!!.minecraft, "${modpack!!.minecraft}.jar")
+                "\${main_class}" -> profile.mainClass
                 "\${auth_player_name}" -> acc.username
                 "\${version_name}" -> modpack!!.minecraft
                 "\${game_directory}" -> dataDir.toString()
@@ -317,14 +307,20 @@ class UpdateController : Controller() {
                         ) {
                             updateMessage("Downloading forge installer wrapper...")
 
-                            dataDir.join("launcher_profiles.json")
-                                .copyTo(dataDir.parentFile.join("launcher_profiles.json"), true)
+                            val globalProfiles = dataDir.parentFile.join("launcher_profiles.json")
+                            logger.trace("deleting global profiles")
+                            if (globalProfiles.exists()) {
+                                globalProfiles.delete()
+                            }
+
+                            logger.trace("copying over local profile to global")
+                            dataDir.join("launcher_profiles.json").copyTo(globalProfiles, true)
 
                             // check for old or new forge installer
                             val (major, minor) = manifest.id.split(".").map { it.toIntOrNull() ?: 0 }
                             if (major > 1 || minor > 12) {
                                 logger.info("patching forge using installer v2")
-                                val f2w = runtimeDirectories.cacheDir.file().join(f1WrapperFilename)
+                                val f2w = runtimeDirectories.cacheDir.file().join(f2WrapperFilename)
                                 val f2wHash =
                                     Util.download("$FORGE2_WRAPPER.sha1sum".url())
                                         .use { it.bufferedReader().readText() }
@@ -335,16 +331,16 @@ class UpdateController : Controller() {
 
                                 updateMessage("downloading forge installer")
                                 val forgeLink = forgeInstallLink.format(forgeVersion).url()
-                                val f1 = f2w.parentFile.join(FilenameUtils.getName(forgeLink.path))
-                                if (!f1.exists()) {
-                                    Util.download(forgeLink, f1)
+                                val f2 = f2w.parentFile.join(FilenameUtils.getName(forgeLink.path))
+                                if (!f2.exists()) {
+                                    Util.download(forgeLink, f2)
                                 }
 
                                 updateMessage("launching patcher")
                                 val exitCode = ProcessBuilder(
                                     System.getProperty("java.home").file().join("bin", JAVA_EXECUTABLE).toString(),
-                                    "-cp", listOf(f1.toString(), f2w.toString()).joinToString(File.pathSeparator),
-                                    "moe.z0ne.mc.forge1installer.MainKt",
+                                    "-cp", listOf(f2.toString(), f2w.toString()).joinToString(File.pathSeparator),
+                                    "moe.z0ne.mc.forge2installer.MainKt",
                                     runtimeDirectories.dataDir
                                 )
                                     .redirectError(ProcessBuilder.Redirect.INHERIT)
@@ -390,11 +386,10 @@ class UpdateController : Controller() {
 
                             logger.trace(
                                 "copying {} to {}",
-                                dataDir.parentFile.join("launcher_profiles.json"),
+                                globalProfiles,
                                 dataDir.join("launcher_profiles.json")
                             )
-                            dataDir.parentFile.join("launcher_profiles.json")
-                                .copyTo(dataDir.join("launcher_profiles.json"), true)
+                            globalProfiles.copyTo(dataDir.join("launcher_profiles.json"), true)
 
                             logger.debug("checking for missing libraries...")
                             val forgeProfileVersion =

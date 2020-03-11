@@ -1,25 +1,13 @@
 package lib.minecraft
 
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonConfiguration
-import lib.OS
 import lib.Util
 import lib.join
 import lib.url
 import mu.KotlinLogging
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.io.BufferedInputStream
 import java.io.File
-import java.io.FileInputStream
 import java.net.URL
-import java.security.MessageDigest
-import java.time.OffsetDateTime
-import java.util.jar.JarFile
-import javax.xml.bind.annotation.adapters.HexBinaryAdapter
 
 /*fun fetchAssetIndex(url: URL): AssetObjects {
     logger.info("fetching asset index from {}...", url)
@@ -68,7 +56,7 @@ data class Minecraft(
         }
 
         fun parse(json: File): Minecraft {
-            var mc = Util.json.parse(serializer(), json.readText())
+            val mc = Util.json.parse(serializer(), json.readText())
             mc.location = json
             return mc
         }
@@ -85,23 +73,22 @@ data class Minecraft(
     lateinit var location: File
 
     fun allLibraries(feature: VersionArgumentFeature, os: VersionArgumentOS): List<String> {
-        return (inherited?.allLibraries(feature, os) ?: listOf()) +
-                libraries.filter { lib -> lib.isAllowed(feature, os) }
-                    .map { lib ->
-                        val (domain, pkg, ver) = lib.name.split(":")
-                        var path = "${domain.replace('.', '/')}/$pkg/$ver/$pkg-$ver.jar"
-                        if ((lib.downloads.artifact?.path) != null) {
-                            path = lib.downloads.artifact.path
-                        }
+        return libraries.filter { lib -> lib.isAllowed(feature, os) }
+            .map { lib ->
+                val (domain, pkg, ver) = lib.name.split(":")
+                var path = "${domain.replace('.', '/')}/$pkg/$ver/$pkg-$ver.jar"
+                if ((lib.downloads.artifact?.path) != null) {
+                    path = lib.downloads.artifact.path
+                }
 
-                        return@map path
-                    }
+                return@map path
+            } + (inherited?.allLibraries(feature, os) ?: listOf())
     }
 
     fun launchArgs(feature: VersionArgumentFeature, os: VersionArgumentOS): List<String> {
         logger.debug("processing {} args", id)
         logger.trace("is modern? {}", arguments != null)
-        logger.trace("is legacy? {}", minecraftArguments!= null)
+        logger.trace("is legacy? {}", minecraftArguments != null)
         logger.trace("mainClass: {}", mainClass)
         return if (minecraftArguments != null) {
             // set generic jvm args (based on 1.15.2 jvm args)
@@ -110,7 +97,7 @@ data class Minecraft(
                 "-Dminecraft.launcher.brand=\${launcher_name}",
                 "-Dminecraft.launcer.version=\${launcher_version}",
                 "-cp", "\${classpath}", // jar class path
-                mainClass
+                "\${main_class}"
             ) + if (feature.hasCustomResolution) {
                 listOf(
                     "--width", "\${resolution_width}",
@@ -127,6 +114,9 @@ data class Minecraft(
                         val args = mutableListOf<String>()
                         arguments.jvm.forEach { argumentList ->
                             args.addAll(argumentList.arguments(feature, os))
+                        }
+                        if (arguments.jvm.isNotEmpty()) {
+                            args.add("\${main_class}")
                         }
                         arguments.game.forEach { argumentList ->
                             args.addAll(argumentList.arguments(feature, os))
