@@ -15,12 +15,28 @@ import lib.yggdrasil.Account
 import mu.KotlinLogging
 import org.apache.commons.io.FilenameUtils
 import runtimeDirectories
-import tornadofx.*
+import tornadofx.Controller
+import tornadofx.EventBus
+import tornadofx.FXEvent
+import tornadofx.task
 import view.MainView
 import java.io.File
 import java.io.FileNotFoundException
 import java.net.URL
-import kotlin.error
+import kotlin.collections.List
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.containsKey
+import kotlin.collections.count
+import kotlin.collections.elementAt
+import kotlin.collections.find
+import kotlin.collections.first
+import kotlin.collections.forEach
+import kotlin.collections.get
+import kotlin.collections.indices
+import kotlin.collections.joinToString
+import kotlin.collections.listOf
+import kotlin.collections.map
 
 class UpdateController : Controller() {
     class UpdateAvailable : FXEvent(runOn = EventBus.RunOn.ApplicationThread)
@@ -296,10 +312,14 @@ class UpdateController : Controller() {
                     UpdateStep.DOWNLOAD_FORGE -> {
                         updateMessage("verifying forge install...")
                         val forgeVersion = modpack!!.forge
-                        if (forgeVersion != null && (dataDir.join("forgeVersion")
-                                .exists() && dataDir.join("forgeVersion").readText() != forgeVersion)
+                        if (forgeVersion != null && !(dataDir.join("forgeVersion")
+                                .exists() && dataDir.join("forgeVersion").readText() == forgeVersion)
                         ) {
                             updateMessage("Downloading forge installer wrapper...")
+
+                            dataDir.join("launcher_profiles.json")
+                                .copyTo(dataDir.parentFile.join("launcher_profiles.json"), true)
+
                             // check for old or new forge installer
                             val (major, minor) = manifest.id.split(".").map { it.toIntOrNull() ?: 0 }
                             if (major > 1 || minor > 12) {
@@ -321,8 +341,6 @@ class UpdateController : Controller() {
                                 }
 
                                 updateMessage("launching patcher")
-                                dataDir.join("launcher_profiles.json")
-                                    .copyTo(dataDir.parentFile.join("launcher_profiles.json"), true)
                                 val exitCode = ProcessBuilder(
                                     System.getProperty("java.home").file().join("bin", JAVA_EXECUTABLE).toString(),
                                     "-cp", listOf(f1.toString(), f2w.toString()).joinToString(File.pathSeparator),
@@ -336,8 +354,6 @@ class UpdateController : Controller() {
                                     .waitFor()
 
                                 logger.trace("Patcher finished: {}", exitCode)
-                                dataDir.parentFile.join("launcher_profiles.json")
-                                    .copyTo(dataDir.join("launcher_profiles.json"), true)
                             } else {
                                 logger.info("patching forge using installer v1")
                                 val f1w = runtimeDirectories.cacheDir.file().join(f1WrapperFilename)
@@ -357,8 +373,6 @@ class UpdateController : Controller() {
                                 }
 
                                 updateMessage("launching patcher")
-                                dataDir.join("launcher_profiles.json")
-                                    .copyTo(dataDir.parentFile.join("launcher_profiles.json"), true)
                                 val exitCode = ProcessBuilder(
                                     System.getProperty("java.home").file().join("bin", JAVA_EXECUTABLE).toString(),
                                     "-cp", listOf(f1.toString(), f1w.toString()).joinToString(File.pathSeparator),
@@ -372,16 +386,23 @@ class UpdateController : Controller() {
                                     .waitFor()
 
                                 logger.trace("Patcher finished: {}", exitCode)
-                                dataDir.parentFile.join("launcher_profiles.json")
-                                    .copyTo(dataDir.join("launcher_profiles.json"), true)
                             }
+
+                            logger.trace(
+                                "copying {} to {}",
+                                dataDir.parentFile.join("launcher_profiles.json"),
+                                dataDir.join("launcher_profiles.json")
+                            )
+                            dataDir.parentFile.join("launcher_profiles.json")
+                                .copyTo(dataDir.join("launcher_profiles.json"), true)
 
                             logger.debug("checking for missing libraries...")
                             val forgeProfileVersion =
                                 (LauncherProfiles.parse(dataDir.join("launcher_profiles.json")).profiles["forge"]
                                     ?: error("failed to get forge version")).lastVersionId
                             val forgeProfile = Minecraft.parse(
-                                runtimeDirectories.dataDir.file().join("versions", forgeProfileVersion, "$forgeProfileVersion.json")
+                                runtimeDirectories.dataDir.file()
+                                    .join("versions", forgeProfileVersion, "$forgeProfileVersion.json")
                             )
                             val msgTemplate = "verifying libraries... (%d / %d): %s"
                             for (i in forgeProfile.libraries.indices) {
