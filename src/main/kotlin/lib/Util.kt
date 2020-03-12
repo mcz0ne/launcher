@@ -38,14 +38,14 @@ object Util {
         return hash
     }
 
-    fun download(url: URL, target: File, shaHash: String? = null) {
+    fun download(url: URL, target: File, shaHash: String? = null): Boolean {
         logger.debug("Preparing {} for download", url)
         if (target.exists() && shaHash != null) {
             logger.trace("Target {} found, comparing hashes", target)
             val targetHash = sha1(target)
             if (targetHash == shaHash.toLowerCase()) {
                 logger.debug("Hash match, skipping")
-                return
+                return false
             }
         }
 
@@ -70,6 +70,7 @@ object Util {
         logger.trace("Moving temporary file from {} to {}", f, target)
         f.copyTo(target, true)
         f.delete()
+        return true
     }
 
     fun download(url: URL): InputStream {
@@ -86,28 +87,34 @@ object Util {
 
     fun extract(zip: File, destDir: File, exclude: List<String> = listOf()) {
         logger.debug("Extracting {}", zip)
-        val jar = JarFile(zip)
         destDir.mkdirs()
+        JarFile(zip).use { jar ->
+            val enumEntries = jar.entries()
+            while (enumEntries.hasMoreElements()) {
+                val file = enumEntries.nextElement()
+                if (exclude.any { file.name.startsWith(it) || file.name.startsWith("/$it") }) {
+                    continue
+                }
 
-        val enumEntries = jar.entries()
-        while (enumEntries.hasMoreElements()) {
-            val file = enumEntries.nextElement()
-            if (exclude.any { file.name.startsWith(it) || file.name.startsWith("/$it") }) {
-                continue
+                val f = File(destDir, file.name)
+                if (file.isDirectory) {
+                    f.mkdir()
+                    continue
+                }
+
+                // just to make sure file exists
+                f.parentFile.mkdirs()
+                logger.trace(" - inflating {}: {} -> {}", file, file.compressedSize, file.size)
+                f.outputStream().use { outStream ->
+                    jar.getInputStream(file).use { inStream ->
+                        inStream.copyTo(outStream)
+                    }
+                }
+
+                // yield thread between files
+                Thread.yield()
             }
-
-            val f = File(destDir, file.name)
-            if (file.isDirectory) {
-                f.mkdir()
-                continue
-            }
-
-            val s = f.outputStream()
-            val cs = jar.getInputStream(file)
-            cs.copyTo(s)
-            cs.close()
-            s.close()
+            jar.close()
         }
-        jar.close()
     }
 }

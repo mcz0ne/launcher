@@ -1,14 +1,10 @@
 package lib.modpack
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonConfiguration
 import lib.Util
 import mu.KotlinLogging
-import okhttp3.OkHttpClient
 import java.io.File
 import java.net.URL
-import java.util.jar.JarFile
 
 @Serializable
 data class Modpack(
@@ -31,6 +27,7 @@ data class Modpack(
     fun process(root: File) {
         packages.forEach {p ->
             p.process(root)
+            Thread.yield()
         }
     }
 }

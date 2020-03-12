@@ -11,9 +11,12 @@ import javafx.geometry.VPos
 import javafx.scene.control.*
 import javafx.scene.layout.Priority
 import javafx.scene.layout.RowConstraints
+import javafx.scene.text.FontPosture
 import javafx.scene.text.FontWeight
-import lib.*
 import lib.Dialog
+import lib.file
+import lib.join
+import lib.url
 import lib.yggdrasil.Account
 import lib.yggdrasil.BadRequestException
 import mu.KotlinLogging
@@ -28,24 +31,13 @@ class MainView : View("Launcher") {
 
     private val updateController: UpdateController by inject()
 
-    //private val lcc: LauncherConfigController by inject()
-    //private val cc: ConfigController by inject()
-    //private val optModel = ConfigController.ConfigurationModel(cc.options)
-    //private var args: List<String> = listOf()
-
     private var accountList: ListView<Account> by singleAssign()
-    private var accountLabel: Label by singleAssign()
     var taskProgressView: TaskProgressView<Task<Unit>> by singleAssign()
-    private var logArea: TextArea by singleAssign()
 
     private val launcherApp: LauncherApp
         get() = super.app as LauncherApp
 
     init {
-        subscribe<FXAppender.Line> {
-            logArea.appendText(it.line)
-        }
-
         subscribe<UpdateController.UpdateAvailable> {
             if (launcherApp.instance.alwaysUpdate) {
                 updateController.update()
@@ -271,19 +263,6 @@ class MainView : View("Launcher") {
                 }
             }
 
-            tab("Log") {
-                textarea {
-                    paddingAll = 5.0
-                    vgrow = Priority.ALWAYS
-                    hgrow = Priority.ALWAYS
-                    logArea = this
-
-                    style {
-                        fontFamily = "monospace"
-                    }
-                }
-            }
-
             tab("About") {
                 vbox {
                     paddingAll = 5.0
@@ -363,13 +342,30 @@ class MainView : View("Launcher") {
             textflow {
                 paddingAll = 6.0
                 label("Selected Minecraft Account: ")
-//                label(cc.selectedAccount?.username ?: "unknown...") {
-//                    accountLabel = this
-//
-//                    style {
-//                        fontWeight = FontWeight.BOLD
-//                    }
-//                }
+                label(launcherApp.accounts.activeAccount?.username ?: "unknown...") {
+                    launcherApp.accounts.activeAccountProperty.addListener { _, _, acc ->
+                        if (acc == null) {
+                            this.text = "unknown..."
+                            this.style {
+                                fontStyle = FontPosture.ITALIC
+                                fontWeight = FontWeight.NORMAL
+                            }
+                        } else {
+                            this.text = acc.username
+                            this.style {
+                                fontStyle = FontPosture.REGULAR
+                                fontWeight = FontWeight.BOLD
+                            }
+                        }
+                    }
+                    style {
+                        if (launcherApp.accounts.activeAccount == null) {
+                            fontStyle = FontPosture.ITALIC
+                        } else {
+                            fontWeight = FontWeight.BOLD
+                        }
+                    }
+                }
             }
             button("Launch Minecraft") {
                 isDisable = true
@@ -426,9 +422,13 @@ class MainView : View("Launcher") {
         accountList.setOnMouseClicked {
             if (it.clickCount >= 2) {
                 val acc = accountList.selectedItem
-                logger.trace("clicked {} times on {}", it.clickCount, acc)
-                launcherApp.accounts.activeAccount = acc
-                accountList.refresh()
+                if (acc == null) {
+                    launcherApp.accounts.interactiveLogin(primaryStage)
+                } else {
+                    logger.trace("clicked {} times on {}", it.clickCount, acc)
+                    launcherApp.accounts.activeAccount = acc
+                    accountList.refresh()
+                }
             }
         }
 

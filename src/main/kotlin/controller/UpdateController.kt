@@ -4,6 +4,7 @@ import FORGE1_WRAPPER
 import FORGE2_WRAPPER
 import JAVA_EXECUTABLE
 import app.LauncherApp
+import javafx.application.Platform
 import javafx.beans.property.SimpleBooleanProperty
 import lib.Util
 import lib.file
@@ -116,7 +117,7 @@ class UpdateController : Controller() {
                 runtimeDirectories.dataDir.file().join(launcherApp.launcherConfig.id, "modpack.json")
             )
 
-            if (installedVersion != modpack!!.version) {
+            if (true || installedVersion != modpack!!.version) {
                 fire(UpdateAvailable())
             } else {
                 canLaunch = true
@@ -269,7 +270,7 @@ class UpdateController : Controller() {
                                 Util.download(natives.url!!, libFolder.join(natives.path!!), natives.sha1)
                                 Util.extract(libFolder.join(natives.path), libNatives, lib.extract?.exclude ?: listOf())
                             }
-                            Thread.sleep(10)
+                            Thread.yield()
                         }
                     }
                     UpdateStep.DOWNLOAD_MC_ASSETS -> {
@@ -296,7 +297,7 @@ class UpdateController : Controller() {
                             updateMessage(msgTemplate.format(i + 1, key))
                             val fname = "${obj.hash.substring(0, 2)}/${obj.hash}"
                             Util.download(URL(assetBaseURL, fname), assetBaseDir.join(fname), obj.hash)
-                            Thread.sleep(10)
+                            Thread.yield()
                         }
                     }
                     UpdateStep.DOWNLOAD_FORGE -> {
@@ -414,7 +415,7 @@ class UpdateController : Controller() {
                                 } else {
                                     logger.trace("{} OK", lib.name)
                                 }
-                                Thread.sleep(10)
+                                Thread.yield()
                             }
 
                             dataDir.join("forgeVersion").writeText(modpack!!.forge!!)
@@ -429,12 +430,14 @@ class UpdateController : Controller() {
 
                 step = step.next()
                 updateProgress(step.step, UpdateStep.DONE.step)
-                Thread.sleep(10)
+                Thread.yield()
             }
 
-            canLaunch = true
+            logger.info("finished modpack update")
             installedVersion = modpack!!.version
             updateMessage("finished!")
+            Platform.runLater { canLaunch = true }
+            return@task
         })
     }
 }

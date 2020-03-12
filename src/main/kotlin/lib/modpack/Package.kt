@@ -16,14 +16,15 @@ data class Package(
     val sha1: String? = null,
     val homepage: String? = null,
     val target: String? = null,
-    val action: Action = Action.EXTRACT
+    val action: Action = Action.DOWNLOAD
 ) {
     fun process(root: File) {
         when (action) {
             Action.EXTRACT -> {
                 val f = root.join(target(), "$id.${extension()}")
-                Util.download(url!!, f, sha1)
-                Util.extract(f, root.join(target()))
+                if (Util.download(url!!, f, sha1)) {
+                    Util.extract(f, root.join(target()))
+                }
             }
             Action.REMOVE -> root.join(target(), "$id.${extension()}").delete()
             Action.IGNORE -> {}

@@ -5,15 +5,12 @@ import app.config.Instance
 import javafx.stage.Stage
 import joptsimple.OptionParser
 import joptsimple.OptionSet
-import lib.FXAppender
 import lib.file
 import lib.join
 import mu.KotlinLogging
 import runtimeDirectories
 import style.Styles
 import tornadofx.App
-import tornadofx.FX
-import tornadofx.UIComponent
 import view.MainView
 import java.io.File
 import java.io.FileNotFoundException
@@ -32,10 +29,12 @@ class LauncherApp : App(MainView::class, Styles::class) {
             if (_accounts == null) {
                 val accountsFile = File(runtimeDirectories.configDir.file(), "accounts.json")
 
-                _accounts =try {
+                _accounts = try {
                     Accounts.load(accountsFile)
                 } catch (ex: FileNotFoundException) {
-                    Accounts()
+                    val acc = Accounts()
+                    acc.save(accountsFile)
+                    acc
                 }
             }
 
@@ -78,16 +77,9 @@ class LauncherApp : App(MainView::class, Styles::class) {
         }
 
         runtimeDirectories.configDir.file().mkdirs()
-        logger.debug("launcher configured: {} {}",launcherConfig, runtimeDirectories)
+        logger.debug("launcher configured: {} {}", launcherConfig, runtimeDirectories)
 
         super.start(stage)
     }
 
-    override fun onBeforeShow(view: UIComponent) {
-        super.onBeforeShow(view)
-    }
-
-    override fun stop() {
-        super.stop()
-    }
 }

@@ -8,7 +8,7 @@ plugins {
 }
 
 group 'moe.z0ne.mc'
-version '1.1'
+version '1.2-SNAPSHOT'
 
 sourceCompatibility = 1.8
 
@@ -22,10 +22,10 @@ jar {
 }
 
 gversion {
-    srcDir       = "src/main/kotlin/"
+    srcDir = "src/main/kotlin/"
     classPackage = ""
-    className    = "version"
-    language     = "kotlin"
+    className = "version"
+    language = "kotlin"
 }
 
 repositories {
@@ -59,7 +59,12 @@ compileTestKotlin {
 task copyAssets(type: Copy) {
     from 'assets'
     into 'build/resources/main'
+
+    doLast {
+        println "Copyied assets over"
+    }
 }
 
 project.compileKotlin.dependsOn(createVersionFile)
-project.compileKotlin.dependsOn(copyAssets)
+project.jar.dependsOn(copyAssets)
+project.run.dependsOn(copyAssets)

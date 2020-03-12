@@ -6,7 +6,6 @@ import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.ConsoleAppender
 import ch.qos.logback.core.FileAppender
 import io.github.soc.directories.ProjectDirectories
-import lib.FXAppender
 import lib.OS
 import lib.file
 import org.slf4j.Logger
@@ -40,12 +39,6 @@ fun configureLogger(): Logger {
     consoleAppender.context = lc
     consoleAppender.start()
 
-    val fxAppender = FXAppender<ILoggingEvent>()
-    fxAppender.name = "fx"
-    fxAppender.encoder = newPattern(lc)
-    fxAppender.context = lc
-    fxAppender.start()
-
     val fileAppender = FileAppender<ILoggingEvent>()
     fileAppender.name = "file"
     fileAppender.encoder = newPattern(lc)
@@ -58,7 +51,6 @@ fun configureLogger(): Logger {
     log.isAdditive = false
     log.detachAndStopAllAppenders()
     log.addAppender(consoleAppender)
-    log.addAppender(fxAppender)
     log.addAppender(fileAppender)
     log.level = Level.TRACE
 
@@ -82,7 +74,7 @@ fun main(args: Array<String>) {
         System.getProperty("os.arch"),
         System.getProperty("os.version")
     )
-    logger.info("Starting launcher v{} ({})...", VERSION, GIT_SHA.substring(0,7))
+    logger.info("Starting launcher v{} ({})...", VERSION, GIT_SHA.substring(0, 7))
 
     launch<LauncherApp>(args)
 }

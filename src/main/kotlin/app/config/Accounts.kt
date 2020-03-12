@@ -1,7 +1,7 @@
 package app.config
 
 import javafx.beans.property.SimpleObjectProperty
-import javafx.collections.*
+import javafx.collections.ObservableSet
 import javafx.scene.control.Alert
 import javafx.scene.control.ButtonType
 import javafx.stage.Stage
@@ -46,21 +46,22 @@ data class Accounts(
     @Transient
     private var yggdrasil: Yggdrasil? = null
 
+    @Transient
+    val activeAccountProperty = SimpleObjectProperty<Account?>()
+    var activeAccount by activeAccountProperty
+
     init {
         reload()
         logger.debug("initializing yggdrasil with {}", clientToken)
         yggdrasil = Yggdrasil(clientToken)
-    }
 
-    var activeAccount: Account?
-        get() {
-            return list.find { it.id == active }
-        }
-        set(v) {
-            val save = active == null || active != v?.id
-            active = v?.id ?: throw NullPointerException("Set active account to an account")
+        activeAccountProperty.value = list.find { it.id == active }
+        activeAccountProperty.addListener { _, _, new ->
+            val save = active == null || active != new?.id
+            active = new?.id
             if (save) this.save()
         }
+    }
 
     fun reload(newLocation: File? = null) {
         if (newLocation != null) {
