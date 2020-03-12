@@ -117,7 +117,7 @@ class UpdateController : Controller() {
                 runtimeDirectories.dataDir.file().join(launcherApp.launcherConfig.id, "modpack.json")
             )
 
-            if (true || installedVersion != modpack!!.version) {
+            if (installedVersion != modpack!!.version) {
                 fire(UpdateAvailable())
             } else {
                 canLaunch = true
