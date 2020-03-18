@@ -31,7 +31,7 @@ class MainView : View("${LAUNCHER.name} Launcher") {
     private val mcInstallStatus = TaskStatus()
     private val profiles: ProfilesModel by inject()
 
-    private var accountBox: ComboBox<Pair<String, LauncherProfileAuthenticationEntry>> by singleAssign()
+    private var accountBox: ComboBox<Pair<String, LauncherProfileAuthenticationEntry>?> by singleAssign()
     private var launchButton: Button by singleAssign()
 
     init {
@@ -39,7 +39,7 @@ class MainView : View("${LAUNCHER.name} Launcher") {
             if (completed) {
                 profiles.reload()
                 accountBox.items.bind(profiles.accounts) { key, value -> Pair(key, value) }
-                accountBox.valueProperty().bind(profiles.selectedAccount)
+                accountBox.selectionModel.select(profiles.selectedAccount)
 
                 if (app.parameters.raw.contains("launch")) {
                     launchMC()
@@ -69,19 +69,23 @@ class MainView : View("${LAUNCHER.name} Launcher") {
             vbox {
                 spacing = 5.0
 
-                combobox<Pair<String, LauncherProfileAuthenticationEntry>> {
+                combobox<Pair<String, LauncherProfileAuthenticationEntry>?> {
                     accountBox = this
 
-                    minWidth = 150.0
-                    maxWidth = 150.0
+                    minWidth = 250.0
+                    maxWidth = 250.0
 
                     disableProperty().bind(mcInstallStatus.completed.not())
 
                     cellFormat { acc ->
-                        text = "${acc.second.profiles.values.first().displayName} (${acc.second.username})"
+                        text = "${acc!!.second.profiles.values.first().displayName} (${acc.second.username})"
                     }
 
-                    valueProperty().addListener { _, _, new -> profiles.selectedID = new.first }
+                    setOnAction {
+                        logger.debug("changing account id from {} to {}", profiles.selectedID, this.selectedItem?.first)
+                        profiles.selectedID = this.selectedItem?.first
+                        logger.trace("current account: {}", profiles.selectedAccount?.second?.username)
+                    }
                 }
 
                 hbox {
@@ -171,7 +175,7 @@ class MainView : View("${LAUNCHER.name} Launcher") {
     }
 
     private fun launchMC() {
-        if (profiles.accounts.size == 0 || profiles.selectedAccount.get() == null || !profiles.verifyAccount()) {
+        if (profiles.accounts.size == 0 || profiles.selectedAccount == null || !profiles.verifyAccount()) {
             if (!profiles.interactiveLogin(primaryStage, true)) {
                 Dialog.error(
                     "Failed to login",
@@ -194,7 +198,7 @@ class MainView : View("${LAUNCHER.name} Launcher") {
                 .start()
                 .waitFor()
 
-            val acc = profiles.selectedAccount.get()!!
+            val acc = profiles.selectedAccount!!
             val yggAcc = acc.second.toYggdrasil(acc.first)
             logger.debug("preparing launch args")
             val args = minecraft.launchArgs(DATA_DIR, yggAcc)

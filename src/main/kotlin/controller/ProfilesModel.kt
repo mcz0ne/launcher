@@ -1,7 +1,6 @@
 package controller
 
 import DATA_DIR
-import javafx.beans.property.SimpleObjectProperty
 import javafx.collections.ObservableMap
 import javafx.scene.control.Alert
 import javafx.stage.Stage
@@ -36,32 +35,30 @@ class ProfilesModel : Controller() {
 
             profiles.selectedUser!!.account = v
             profiles.selectedUser!!.profile = profiles.authenticationDatabase.getValue(v).profiles.keys.first()
-            selectedAccount.set(Pair(v, profiles.authenticationDatabase.getValue(v)))
+            profiles.save(DATA_DIR.join(LauncherProfiles.FILENAME))
         }
 
-    var selectedAccount = SimpleObjectProperty<Pair<String, LauncherProfileAuthenticationEntry>?>()
+    val selectedAccount: Pair<String, LauncherProfileAuthenticationEntry>?
+        get() = if (selectedID == null) null else Pair(
+            selectedID!!,
+            profiles.authenticationDatabase.getValue(selectedID!!)
+        )
 
     init {
         reload()
-        selectedAccount.addListener { _, _, newAccount ->
-            selectedID = newAccount?.first
-        }
     }
 
     fun reload() {
         profiles = LauncherProfiles.parse(DATA_DIR.join(LauncherProfiles.FILENAME))
         yggdrasil = Yggdrasil(profiles.clientToken)
         accounts = profiles.authenticationDatabase.asObservable()
-        if (selectedID != null) {
-            selectedAccount.set(Pair(selectedID!!, profiles.authenticationDatabase.getValue(selectedID!!)))
-        }
     }
 
     fun interactiveLogin(stage: Stage, refresh: Boolean = false): Boolean {
         var view = tornadofx.find<AddAccount>()
         if (refresh && selectedID != null) {
             view = view.with(
-                selectedAccount.get()!!.second.username,
+                selectedAccount!!.second.username,
                 "Failed to verify the saved credentials, please login again."
             )
         }
@@ -85,7 +82,7 @@ class ProfilesModel : Controller() {
         }
     }
 
-    fun login(username: String, password: String) {
+    private fun login(username: String, password: String) {
         val (id, entry) = LauncherProfileAuthenticationEntry.fromYggdrasil(yggdrasil.authenticate(username, password))
         accounts[id] = entry
 
@@ -97,7 +94,7 @@ class ProfilesModel : Controller() {
     }
 
     fun logout() {
-        val selAcc = selectedAccount.get()
+        val selAcc = selectedAccount
         if (selAcc != null) {
             val yggAcc = selAcc.second.toYggdrasil(selAcc.first)
             yggdrasil.invalidate(yggAcc)
@@ -111,7 +108,7 @@ class ProfilesModel : Controller() {
     }
 
     fun verifyAccount(): Boolean {
-        val selAcc = selectedAccount.get() ?: return false
+        val selAcc = selectedAccount ?: return false
         val yggAcc = selAcc.second.toYggdrasil(selAcc.first)
 
         return if (yggdrasil.validate(yggAcc)) {
