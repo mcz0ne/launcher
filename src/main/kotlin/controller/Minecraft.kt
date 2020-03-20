@@ -29,7 +29,7 @@ class Minecraft : Controller() {
     private val logger = KotlinLogging.logger { }
     lateinit var profile: Modpack
 
-    fun install(workDir: File, ts: TaskStatus? = null) {
+    fun install(workDir: File, ts: TaskStatus? = null, forceUpdateSync: Boolean = false) {
         task(daemon = true, taskStatus = ts) {
             logger.info("--- modpack")
             updateTitle("Installing Minecraft")
@@ -216,7 +216,7 @@ class Minecraft : Controller() {
             updateProgress(0, 3)
             updateMessage("verifying serversync install...")
             val ss = workDir.join("serversync.jar")
-            if (!ss.exists()) {
+            if (forceUpdateSync || !ss.exists()) {
                 updateMessage("fetching github release info")
                 val release =
                     Util.download(URL("https://api.github.com/repos/superzanti/ServerSync/releases/latest")).use {

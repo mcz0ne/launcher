@@ -171,7 +171,11 @@ class MainView : View("${LAUNCHER.name} Launcher") {
 
     override fun onBeforeShow() {
         super.onBeforeShow()
-        minecraft.install(DATA_DIR, mcInstallStatus)
+        minecraft.install(
+            DATA_DIR,
+            mcInstallStatus,
+            app.parameters.raw.contains("--update-sync") || app.parameters.raw.contains("-u")
+        )
     }
 
     private fun launchMC() {
@@ -190,13 +194,17 @@ class MainView : View("${LAUNCHER.name} Launcher") {
         val java = System.getProperty("java.home").file().join("bin", JAVA_EXECUTABLE).toString()
 
         runAsync {
-            logger.debug("running serversync")
-            ProcessBuilder(java, "-jar", DATA_DIR.join("serversync.jar").toString(), "progress-only")
-                .directory(DATA_DIR)
-                .redirectOutput(ProcessBuilder.Redirect.INHERIT)
-                .redirectError(ProcessBuilder.Redirect.INHERIT)
-                .start()
-                .waitFor()
+            if (app.parameters.raw.contains("--skip-sync") || app.parameters.raw.contains("-s")) {
+                logger.warn("Skipping ServerSync...")
+            } else {
+                logger.debug("running serversync")
+                ProcessBuilder(java, "-jar", DATA_DIR.join("serversync.jar").toString(), "progress-only")
+                    .directory(DATA_DIR)
+                    .redirectOutput(ProcessBuilder.Redirect.INHERIT)
+                    .redirectError(ProcessBuilder.Redirect.INHERIT)
+                    .start()
+                    .waitFor()
+            }
 
             val acc = profiles.selectedAccount!!
             val yggAcc = acc.second.toYggdrasil(acc.first)
